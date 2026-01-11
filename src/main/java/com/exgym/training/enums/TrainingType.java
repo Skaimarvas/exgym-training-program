@@ -5,5 +5,16 @@ public enum TrainingType {
     CARDIO,
     STRENGTH,
     FLEXIBILITY,
-    BALANCE
+    BALANCE,
+    BULKING,
+    CUTTING,
+    MAINTENANCE,
+    HIIT,
+    ENDURANCE,
+    FUNCTIONAL,
+    CIRCUIT_TRAINING,
+    CROSS_FIT,
+    YOGA,
+    PILATES,
+    SPORTS_SPECIFIC
 }

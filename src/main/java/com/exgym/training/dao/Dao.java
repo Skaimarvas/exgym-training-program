@@ -1,12 +1,12 @@
 package com.exgym.training.dao;
 
-import java.util.Collection;
+import java.util.Map;
 import java.util.Optional;
 
 public interface Dao<T> {
     Optional<T> get(long id);
 
-    Collection<T> getAll();
+    Map<Long, T> getAll();
 
     void save(T t);
 
