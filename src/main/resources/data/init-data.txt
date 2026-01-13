@@ -1,0 +1,10 @@
+TRAINER,1,John,Doe,John.Doe,pass123456,true,123 Main St,1990-01-15
+TRAINER,2,Jane,Smith,Jane.Smith,pass789012,true,456 Oak Ave,1985-05-20
+TRAINER,3,Mike,Johnson,Mike.Johnson,pass345678,true,789 Pine Rd,1992-08-10
+TRAINEE,1,Alice,Williams,Alice.Williams,pass901234,true,Yoga
+TRAINEE,2,Bob,Brown,Bob.Brown,pass567890,true,Weight Training
+TRAINEE,3,Carol,Davis,Carol.Davis,pass123098,true,Cardio
+TRAINING,1,1,1,Morning Yoga Session,YOGA,2026-01-15,60
+TRAINING,2,2,2,Strength Training,STRENGTH,2026-01-16,90
+TRAINING,3,3,3,Cardio Workout,CARDIO,2026-01-17,45
+TRAINING,4,1,2,Advanced Yoga,YOGA,2026-01-18,75

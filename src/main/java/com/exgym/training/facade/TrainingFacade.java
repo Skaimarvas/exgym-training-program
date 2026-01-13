@@ -1,0 +1,85 @@
+package com.exgym.training.facade;
+
+import java.util.Optional;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
+
+import com.exgym.training.entity.Trainee;
+import com.exgym.training.entity.Trainer;
+import com.exgym.training.entity.Training;
+import com.exgym.training.enums.TrainingType;
+import com.exgym.training.service.TraineeService;
+import com.exgym.training.service.TrainerService;
+import com.exgym.training.service.TrainingService;
+
+@Component
+public class TrainingFacade {
+    
+    private static final Logger logger = LoggerFactory.getLogger(TrainingFacade.class);
+    
+    private final TraineeService traineeService;
+    private final TrainerService trainerService;
+    private final TrainingService trainingService;
+    
+    public TrainingFacade(TraineeService traineeService, 
+                         TrainerService trainerService,
+                         TrainingService trainingService) {
+        this.traineeService = traineeService;
+        this.trainerService = trainerService;
+        this.trainingService = trainingService;
+        logger.info("TrainingFacade initialized with all services");
+    }
+    
+    
+    public Trainee createTrainee(String firstName, String lastName, String specialization) {
+        logger.info("Facade: Creating trainee {} {}", firstName, lastName);
+        return traineeService.create(firstName, lastName, specialization);
+    }
+    
+    public Trainee updateTrainee(Trainee trainee) {
+        logger.info("Facade: Updating trainee {}", trainee.getUserName());
+        return traineeService.update(trainee);
+    }
+    
+    public void deleteTrainee(long traineeId) {
+        logger.info("Facade: Deleting trainee with id {}", traineeId);
+        traineeService.delete(traineeId);
+    }
+    
+    public Optional<Trainee> selectTrainee(long traineeId) {
+        logger.debug("Facade: Selecting trainee with id {}", traineeId);
+        return traineeService.select(traineeId);
+    }
+    
+    // Trainer operations
+    public Trainer createTrainer(String firstName, String lastName, String address, String dateOfBirth) {
+        logger.info("Facade: Creating trainer {} {}", firstName, lastName);
+        return trainerService.create(firstName, lastName, address, dateOfBirth);
+    }
+    
+    public Trainer updateTrainer(Trainer trainer) {
+        logger.info("Facade: Updating trainer {}", trainer.getUserName());
+        return trainerService.update(trainer);
+    }
+    
+    public Optional<Trainer> selectTrainer(long trainerId) {
+        logger.debug("Facade: Selecting trainer with id {}", trainerId);
+        return trainerService.select(trainerId);
+    }
+    
+    // Training operations
+    public Training createTraining(long trainerId, long traineeId, String trainingName, 
+                                  TrainingType trainingType, String trainingDate, int trainingDuration) {
+        logger.info("Facade: Creating training {} for trainee {} with trainer {}", 
+                trainingName, traineeId, trainerId);
+        return trainingService.create(trainerId, traineeId, trainingName, trainingType, 
+                                     trainingDate, trainingDuration);
+    }
+    
+    public Optional<Training> selectTraining(long trainingId) {
+        logger.debug("Facade: Selecting training with id {}", trainingId);
+        return trainingService.select(trainingId);
+    }
+}
