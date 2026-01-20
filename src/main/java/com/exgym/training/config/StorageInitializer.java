@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 
 import com.exgym.training.entity.Trainee;
 import com.exgym.training.entity.Trainer;
+import java.time.LocalDate;
 import com.exgym.training.entity.Training;
 import com.exgym.training.enums.TrainingType;
 import com.exgym.training.storage.Storage;
@@ -63,7 +64,7 @@ public class StorageInitializer {
                         .password(parts[5].trim())
                         .isActive(Boolean.parseBoolean(parts[6].trim()))
                         .address(parts[7].trim())
-                        .dateOfBirth(parts[8].trim())
+                        .dateOfBirth(LocalDate.parse(parts[8].trim()))
                         .build();
                     storage.getTrainers().put(trainer.getId(), trainer);
                     logger.debug("Loaded trainer: {}", trainer.getUserName());

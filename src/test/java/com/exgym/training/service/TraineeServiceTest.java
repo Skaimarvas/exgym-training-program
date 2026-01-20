@@ -3,6 +3,7 @@ package com.exgym.training.service;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.lenient;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -17,12 +18,17 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.exgym.training.dao.TraineeDao;
 import com.exgym.training.entity.Trainee;
+import com.exgym.training.util.CredentialsGenerator;
 
 @ExtendWith(MockitoExtension.class)
 class TraineeServiceTest {
 
     @Mock
     private TraineeDao traineeDao;
+
+
+    @Mock
+    private CredentialsGenerator credentialsGenerator;
 
     @InjectMocks
     private TraineeService traineeService;
@@ -40,6 +46,8 @@ class TraineeServiceTest {
                 .isActive(true)
                 .specialization("Yoga")
                 .build();
+        lenient().when(credentialsGenerator.generateUsername(any(), any(), any())).thenReturn("John.Doe");
+        lenient().when(credentialsGenerator.generatePassword()).thenReturn("pass123456");
     }
 
     @Test
@@ -71,6 +79,7 @@ class TraineeServiceTest {
         when(traineeDao.getAll()).thenReturn(existingTrainees);
 
         
+        when(credentialsGenerator.generateUsername(any(), any(), any())).thenReturn("John.Doe1");
         Trainee created = traineeService.create("John", "Doe", "Cardio");
 
         

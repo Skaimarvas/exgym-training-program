@@ -3,10 +3,12 @@ package com.exgym.training.service;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.lenient;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.time.LocalDate;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,12 +19,17 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.exgym.training.dao.TrainerDao;
 import com.exgym.training.entity.Trainer;
+import com.exgym.training.util.CredentialsGenerator;
 
 @ExtendWith(MockitoExtension.class)
 class TrainerServiceTest {
 
     @Mock
     private TrainerDao trainerDao;
+
+
+    @Mock
+    private CredentialsGenerator credentialsGenerator;
 
     @InjectMocks
     private TrainerService trainerService;
@@ -32,15 +39,17 @@ class TrainerServiceTest {
     @BeforeEach
     void setUp() {
         testTrainer = Trainer.builder()
-                .id(1L)
-                .firstName("Jane")
-                .lastName("Smith")
-                .userName("Jane.Smith")
-                .password("pass789012")
-                .isActive(true)
-                .address("123 Main St")
-                .dateOfBirth("1990-01-15")
-                .build();
+            .id(1L)
+            .firstName("Jane")
+            .lastName("Smith")
+            .userName("Jane.Smith")
+            .password("pass789012")
+            .isActive(true)
+            .address("123 Main St")
+            .dateOfBirth(LocalDate.parse("1990-01-15"))
+            .build();
+        lenient().when(credentialsGenerator.generateUsername(any(), any(), any())).thenReturn("Jane.Smith");
+        lenient().when(credentialsGenerator.generatePassword()).thenReturn("pass789012");
     }
 
     @Test
@@ -60,7 +69,7 @@ class TrainerServiceTest {
         assertNotNull(created.getPassword());
         assertEquals(10, created.getPassword().length());
         assertEquals("123 Main St", created.getAddress());
-        assertEquals("1990-01-15", created.getDateOfBirth());
+        assertEquals(LocalDate.parse("1990-01-15"), created.getDateOfBirth());
         assertTrue(created.getIsActive());
         verify(trainerDao, times(1)).save(any(Trainer.class));
     }
@@ -73,6 +82,7 @@ class TrainerServiceTest {
         when(trainerDao.getAll()).thenReturn(existingTrainers);
 
         
+        when(credentialsGenerator.generateUsername(any(), any(), any())).thenReturn("Jane.Smith1");
         Trainer created = trainerService.create("Jane", "Smith", "456 Oak Ave", "1985-05-20");
 
         

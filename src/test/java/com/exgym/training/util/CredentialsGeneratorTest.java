@@ -8,8 +8,14 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 import com.exgym.training.entity.Trainee;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
 
+
+@SpringBootTest
 class CredentialsGeneratorTest {
+    @Autowired
+    private CredentialsGenerator credentialsGenerator;
 
     @Test
     void testGenerateUsername_NoConflict() {
@@ -17,7 +23,7 @@ class CredentialsGeneratorTest {
         Map<Long, Trainee> existingUsers = new HashMap<>();
         
         
-        String username = CredentialsGenerator.generateUsername("John", "Doe", existingUsers);
+        String username = credentialsGenerator.generateUsername("John", "Doe", existingUsers);
         
         
         assertEquals("John.Doe", username);
@@ -34,7 +40,7 @@ class CredentialsGeneratorTest {
         existingUsers.put(1L, existing);
         
         
-        String username = CredentialsGenerator.generateUsername("John", "Doe", existingUsers);
+        String username = credentialsGenerator.generateUsername("John", "Doe", existingUsers);
         
         
         assertEquals("John.Doe1", username);
@@ -49,7 +55,7 @@ class CredentialsGeneratorTest {
         existingUsers.put(3L, Trainee.builder().id(3L).userName("John.Doe2").build());
         
         
-        String username = CredentialsGenerator.generateUsername("John", "Doe", existingUsers);
+        String username = credentialsGenerator.generateUsername("John", "Doe", existingUsers);
         
         
         assertEquals("John.Doe3", username);
@@ -58,7 +64,7 @@ class CredentialsGeneratorTest {
     @Test
     void testGeneratePassword() {
         
-        String password = CredentialsGenerator.generatePassword();
+        String password = credentialsGenerator.generatePassword();
         
         
         assertNotNull(password);
@@ -69,8 +75,8 @@ class CredentialsGeneratorTest {
     @Test
     void testGeneratePassword_Uniqueness() {
         
-        String password1 = CredentialsGenerator.generatePassword();
-        String password2 = CredentialsGenerator.generatePassword();
+        String password1 = credentialsGenerator.generatePassword();
+        String password2 = credentialsGenerator.generatePassword();
         
         
         assertNotEquals(password1, password2);

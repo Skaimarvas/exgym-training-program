@@ -6,10 +6,13 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 
 import com.exgym.training.dao.TrainerDao;
 import com.exgym.training.entity.Trainer;
 import com.exgym.training.util.CredentialsGenerator;
+import org.springframework.beans.factory.annotation.Autowired;
 
 @Service
 public class TrainerService {
@@ -17,18 +20,26 @@ public class TrainerService {
     private static final Logger logger = LoggerFactory.getLogger(TrainerService.class);
     private final TrainerDao trainerDao;
     private final AtomicLong idGenerator = new AtomicLong(1);
+    private final CredentialsGenerator credentialsGenerator;
     
-    public TrainerService(TrainerDao trainerDao) {
+    @Autowired
+    public TrainerService(TrainerDao trainerDao, CredentialsGenerator credentialsGenerator) {
         this.trainerDao = trainerDao;
+        this.credentialsGenerator = credentialsGenerator;
     }
     
 
     public Trainer create(String firstName, String lastName, String address, String dateOfBirth) {
         logger.info("Creating trainer profile for {} {}", firstName, lastName);
-        
-        String username = CredentialsGenerator.generateUsername(firstName, lastName, trainerDao.getAll());
-        String password = CredentialsGenerator.generatePassword();
-        
+        String username = credentialsGenerator.generateUsername(firstName, lastName, trainerDao.getAll());
+        String password = credentialsGenerator.generatePassword();
+        LocalDate dob;
+        try {
+            dob = LocalDate.parse(dateOfBirth);
+        } catch (DateTimeParseException e) {
+            logger.error("Invalid dateOfBirth format: {}. Expected format: yyyy-MM-dd", dateOfBirth);
+            throw new IllegalArgumentException("Invalid dateOfBirth format. Expected format: yyyy-MM-dd", e);
+        }
         Trainer trainer = Trainer.builder()
                 .id(idGenerator.getAndIncrement())
                 .firstName(firstName)
@@ -37,9 +48,8 @@ public class TrainerService {
                 .password(password)
                 .isActive(true)
                 .address(address)
-                .dateOfBirth(dateOfBirth)
+                .dateOfBirth(dob)
                 .build();
-        
         trainerDao.save(trainer);
         logger.info("Trainer created successfully: {}", username);
         return trainer;

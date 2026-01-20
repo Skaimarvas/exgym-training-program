@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import com.exgym.training.dao.TraineeDao;
 import com.exgym.training.entity.Trainee;
 import com.exgym.training.util.CredentialsGenerator;
+import org.springframework.beans.factory.annotation.Autowired;
 
 @Service
 public class TraineeService {
@@ -17,17 +18,18 @@ public class TraineeService {
     private static final Logger logger = LoggerFactory.getLogger(TraineeService.class);
     private final TraineeDao traineeDao;
     private final AtomicLong idGenerator = new AtomicLong(1);
+    private final CredentialsGenerator credentialsGenerator;
     
-    public TraineeService(TraineeDao traineeDao) {
+    @Autowired
+    public TraineeService(TraineeDao traineeDao, CredentialsGenerator credentialsGenerator) {
         this.traineeDao = traineeDao;
+        this.credentialsGenerator = credentialsGenerator;
     }
     
     public Trainee create(String firstName, String lastName, String specialization) {
         logger.info("Creating trainee profile for {} {}", firstName, lastName);
-        
-        String username = CredentialsGenerator.generateUsername(firstName, lastName, traineeDao.getAll());
-        String password = CredentialsGenerator.generatePassword();
-        
+        String username = credentialsGenerator.generateUsername(firstName, lastName, traineeDao.getAll());
+        String password = credentialsGenerator.generatePassword();
         Trainee trainee = Trainee.builder()
                 .id(idGenerator.getAndIncrement())
                 .firstName(firstName)
@@ -37,7 +39,6 @@ public class TraineeService {
                 .isActive(true)
                 .specialization(specialization)
                 .build();
-        
         traineeDao.save(trainee);
         logger.info("Trainee created successfully: {}", username);
         return trainee;
