@@ -19,45 +19,31 @@ class CredentialsGeneratorTest {
 
     @Test
     void testGenerateUsername_NoConflict() {
-        
-        Map<Long, Trainee> existingUsers = new HashMap<>();
-        
-        
+        Map<Long, com.exgym.training.entity.User> existingUsers = new HashMap<>();
         String username = credentialsGenerator.generateUsername("John", "Doe", existingUsers);
-        
-        
         assertEquals("John.Doe", username);
     }
 
     @Test
     void testGenerateUsername_WithConflict() {
-        
-        Map<Long, Trainee> existingUsers = new HashMap<>();
-        Trainee existing = Trainee.builder()
-                .id(1L)
-                .userName("John.Doe")
-                .build();
-        existingUsers.put(1L, existing);
-        
-        
+        Map<Long, com.exgym.training.entity.User> existingUsers = new HashMap<>();
+        com.exgym.training.entity.User user = com.exgym.training.entity.User.builder()
+            .firstName("John").lastName("Doe").userName("John.Doe").password("pass").build();
+        existingUsers.put(1L, user);
         String username = credentialsGenerator.generateUsername("John", "Doe", existingUsers);
-        
-        
         assertEquals("John.Doe1", username);
     }
 
     @Test
     void testGenerateUsername_MultipleConflicts() {
-        
-        Map<Long, Trainee> existingUsers = new HashMap<>();
-        existingUsers.put(1L, Trainee.builder().id(1L).userName("John.Doe").build());
-        existingUsers.put(2L, Trainee.builder().id(2L).userName("John.Doe1").build());
-        existingUsers.put(3L, Trainee.builder().id(3L).userName("John.Doe2").build());
-        
-        
+        Map<Long, com.exgym.training.entity.User> existingUsers = new HashMap<>();
+        com.exgym.training.entity.User user1 = com.exgym.training.entity.User.builder().firstName("John").lastName("Doe").userName("John.Doe").password("pass").build();
+        com.exgym.training.entity.User user2 = com.exgym.training.entity.User.builder().firstName("John").lastName("Doe").userName("John.Doe1").password("pass").build();
+        com.exgym.training.entity.User user3 = com.exgym.training.entity.User.builder().firstName("John").lastName("Doe").userName("John.Doe2").password("pass").build();
+        existingUsers.put(1L, user1);
+        existingUsers.put(2L, user2);
+        existingUsers.put(3L, user3);
         String username = credentialsGenerator.generateUsername("John", "Doe", existingUsers);
-        
-        
         assertEquals("John.Doe3", username);
     }
 

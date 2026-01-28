@@ -1,11 +1,11 @@
 package com.exgym.training.dao;
 
 import com.exgym.training.entity.Trainer;
+import com.exgym.training.entity.User;
 import com.exgym.training.storage.Storage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.time.LocalDate;
 import java.util.Map;
 import java.util.Optional;
 
@@ -24,53 +24,55 @@ class TrainerDaoTest {
 
     @Test
     void testSaveAndGet() {
-        Trainer trainer = Trainer.builder()
-                .id(1L)
+        User user = User.builder()
                 .firstName("John")
                 .lastName("Doe")
                 .userName("John.Doe")
                 .password("pass123")
+                .build();
+        Trainer trainer = Trainer.builder()
+                .id(1L)
+                .user(user)
                 .isActive(true)
-                .address("123 Main St")
-                .dateOfBirth(LocalDate.of(1990, 1, 1))
                 .build();
         trainerDao.save(trainer);
         Optional<Trainer> found = trainerDao.get(1L);
         assertTrue(found.isPresent());
-        assertEquals("John.Doe", found.get().getUserName());
+        assertEquals("John.Doe", found.get().getUser().getUserName());
     }
 
     @Test
     void testUpdate() {
-        Trainer trainer = Trainer.builder()
-                .id(2L)
+        User user = User.builder()
                 .firstName("Jane")
                 .lastName("Smith")
                 .userName("Jane.Smith")
                 .password("pass456")
+                .build();
+        Trainer trainer = Trainer.builder()
+                .id(2L)
+                .user(user)
                 .isActive(true)
-                .address("456 Oak Ave")
-                .dateOfBirth(LocalDate.of(1985, 5, 20))
                 .build();
         trainerDao.save(trainer);
-        trainer.setAddress("789 Pine Rd");
         trainerDao.update(trainer);
         Optional<Trainer> updated = trainerDao.get(2L);
         assertTrue(updated.isPresent());
-        assertEquals("789 Pine Rd", updated.get().getAddress());
+        assertEquals(trainer.getUser().getUserName(), updated.get().getUser().getUserName());
     }
 
     @Test
     void testDelete() {
-        Trainer trainer = Trainer.builder()
-                .id(3L)
+        User user = User.builder()
                 .firstName("Mike")
                 .lastName("Johnson")
                 .userName("Mike.Johnson")
                 .password("pass789")
+                .build();
+        Trainer trainer = Trainer.builder()
+                .id(3L)
+                .user(user)
                 .isActive(true)
-                .address("321 Elm St")
-                .dateOfBirth(LocalDate.of(1975, 3, 15))
                 .build();
         trainerDao.save(trainer);
         trainerDao.delete(trainer);
@@ -80,25 +82,27 @@ class TrainerDaoTest {
 
     @Test
     void testGetAll() {
-        Trainer trainer1 = Trainer.builder()
-                .id(4L)
+        User user1 = User.builder()
                 .firstName("Alice")
                 .lastName("Brown")
                 .userName("Alice.Brown")
                 .password("pass111")
-                .isActive(true)
-                .address("111 Maple St")
-                .dateOfBirth(LocalDate.of(1992, 7, 10))
                 .build();
-        Trainer trainer2 = Trainer.builder()
-                .id(5L)
+        Trainer trainer1 = Trainer.builder()
+                .id(4L)
+                .user(user1)
+                .isActive(true)
+                .build();
+        User user2 = User.builder()
                 .firstName("Bob")
                 .lastName("White")
                 .userName("Bob.White")
                 .password("pass222")
+                .build();
+        Trainer trainer2 = Trainer.builder()
+                .id(5L)
+                .user(user2)
                 .isActive(true)
-                .address("222 Oak St")
-                .dateOfBirth(LocalDate.of(1988, 12, 5))
                 .build();
         trainerDao.save(trainer1);
         trainerDao.save(trainer2);

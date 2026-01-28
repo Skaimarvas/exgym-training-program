@@ -16,6 +16,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.exgym.training.dao.TrainingDao;
 import com.exgym.training.entity.Training;
 import com.exgym.training.enums.TrainingType;
+import com.exgym.training.entity.Trainer;
+import com.exgym.training.entity.Trainee;
 
 @ExtendWith(MockitoExtension.class)
 class TrainingServiceTest {
@@ -27,46 +29,54 @@ class TrainingServiceTest {
     private TrainingService trainingService;
 
     private Training testTraining;
+    private Trainer dummyTrainer;
+    private Trainee dummyTrainee;
 
     @BeforeEach
     void setUp() {
+        com.exgym.training.entity.User trainerUser = com.exgym.training.entity.User.builder()
+            .firstName("Trainer")
+            .lastName("One")
+            .userName("trainer.one")
+            .password("pass")
+            .build();
+        dummyTrainer = Trainer.builder().id(100L).user(trainerUser).isActive(true).build();
+        com.exgym.training.entity.User traineeUser = com.exgym.training.entity.User.builder()
+            .firstName("Trainee")
+            .lastName("One")
+            .userName("trainee.one")
+            .password("pass")
+            .build();
+        dummyTrainee = Trainee.builder().id(200L).user(traineeUser).isActive(true).build();
         testTraining = new Training(
-                1L,
-                1L,
-                1L,
-                "Morning Yoga",
-                TrainingType.YOGA,
-                "2026-01-15",
-                60
+            1L,
+            dummyTrainer,
+            dummyTrainee,
+            "Morning Yoga",
+            TrainingType.YOGA,
+            new java.util.Date(),
+            60
         );
     }
 
     @Test
     void testCreate() {
-        
-        Training created = trainingService.create(1L, 1L, "Morning Yoga", 
-                TrainingType.YOGA, "2026-01-15", 60);
-
-        
+        Training created = trainingService.create(1L, dummyTrainer, dummyTrainee, "Morning Yoga", TrainingType.YOGA, new java.util.Date(), 60);
         assertNotNull(created);
-        assertEquals(1L, created.getTrainerId());
-        assertEquals(1L, created.getTraineeId());
+        assertEquals(dummyTrainer, created.getTrainer());
+        assertEquals(dummyTrainee, created.getTrainee());
         assertEquals("Morning Yoga", created.getTrainingName());
         assertEquals(TrainingType.YOGA, created.getTrainingType());
-        assertEquals("2026-01-15", created.getTrainingDate());
         assertEquals(60, created.getTrainingDuration());
         verify(trainingDao, times(1)).save(any(Training.class));
     }
 
     @Test
     void testSelect() {
-        
         when(trainingDao.get(1L)).thenReturn(Optional.of(testTraining));
 
-        
         Optional<Training> result = trainingService.select(1L);
 
-        
         assertTrue(result.isPresent());
         assertEquals(testTraining.getTrainingName(), result.get().getTrainingName());
         verify(trainingDao, times(1)).get(1L);
@@ -74,13 +84,10 @@ class TrainingServiceTest {
 
     @Test
     void testSelectNonExistent() {
-        
         when(trainingDao.get(999L)).thenReturn(Optional.empty());
 
-        
         Optional<Training> result = trainingService.select(999L);
 
-        
         assertFalse(result.isPresent());
         verify(trainingDao, times(1)).get(999L);
     }

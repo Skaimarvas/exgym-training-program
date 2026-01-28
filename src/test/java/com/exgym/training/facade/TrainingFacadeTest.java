@@ -39,26 +39,29 @@ class TrainingFacadeTest {
 
     @BeforeEach
     void setUp() {
+        com.exgym.training.entity.User traineeUser = com.exgym.training.entity.User.builder()
+            .firstName("John")
+            .lastName("Doe")
+            .userName("John.Doe")
+            .password("pass123")
+            .build();
         trainee = Trainee.builder()
-                .id(1L)
-                .firstName("John")
-                .lastName("Doe")
-                .userName("John.Doe")
-                .password("pass123")
-                .isActive(true)
-                .specialization("Yoga")
-                .build();
+            .id(1L)
+            .user(traineeUser)
+            .isActive(true)
+            .build();
+        com.exgym.training.entity.User trainerUser = com.exgym.training.entity.User.builder()
+            .firstName("Jane")
+            .lastName("Smith")
+            .userName("Jane.Smith")
+            .password("pass456")
+            .build();
         trainer = Trainer.builder()
-                .id(2L)
-                .firstName("Jane")
-                .lastName("Smith")
-                .userName("Jane.Smith")
-                .password("pass456")
-                .isActive(true)
-                .address("123 Main St")
-                .dateOfBirth(java.time.LocalDate.of(1990, 1, 1))
-                .build();
-        training = new Training(3L, 2L, 1L, "Morning Yoga", TrainingType.YOGA, "2024-01-01", 60);
+            .id(2L)
+            .user(trainerUser)
+            .isActive(true)
+            .build();
+        training = new Training(3L, trainer, trainee, "Morning Yoga", TrainingType.YOGA, new java.util.Date(), 60);
     }
 
     @Test
@@ -66,7 +69,7 @@ class TrainingFacadeTest {
         when(traineeService.create(any(), any(), any())).thenReturn(trainee);
         Trainee result = trainingFacade.createTrainee("John", "Doe", "Yoga");
         assertNotNull(result);
-        assertEquals("John.Doe", result.getUserName());
+        assertEquals("John.Doe", result.getUser().getUserName());
         verify(traineeService).create("John", "Doe", "Yoga");
     }
 
@@ -90,7 +93,7 @@ class TrainingFacadeTest {
         when(traineeService.select(anyLong())).thenReturn(Optional.of(trainee));
         Optional<Trainee> result = trainingFacade.selectTrainee(1L);
         assertTrue(result.isPresent());
-        assertEquals("John.Doe", result.get().getUserName());
+        assertEquals("John.Doe", result.get().getUser().getUserName());
         verify(traineeService).select(1L);
     }
 
@@ -99,7 +102,7 @@ class TrainingFacadeTest {
         when(trainerService.create(any(), any(), any(), any())).thenReturn(trainer);
         Trainer result = trainingFacade.createTrainer("Jane", "Smith", "123 Main St", "1990-01-01");
         assertNotNull(result);
-        assertEquals("Jane.Smith", result.getUserName());
+        assertEquals("Jane.Smith", result.getUser().getUserName());
         verify(trainerService).create("Jane", "Smith", "123 Main St", "1990-01-01");
     }
 
@@ -116,17 +119,17 @@ class TrainingFacadeTest {
         when(trainerService.select(anyLong())).thenReturn(Optional.of(trainer));
         Optional<Trainer> result = trainingFacade.selectTrainer(2L);
         assertTrue(result.isPresent());
-        assertEquals("Jane.Smith", result.get().getUserName());
+        assertEquals("Jane.Smith", result.get().getUser().getUserName());
         verify(trainerService).select(2L);
     }
 
     @Test
     void testCreateTraining() {
-        when(trainingService.create(anyLong(), anyLong(), any(), any(), any(), anyInt())).thenReturn(training);
-        Training result = trainingFacade.createTraining(2L, 1L, "Morning Yoga", TrainingType.YOGA, "2024-01-01", 60);
+        when(trainingService.create(anyLong(), any(Trainer.class), any(Trainee.class), any(), any(), any(), anyInt())).thenReturn(training);
+        Training result = trainingFacade.createTraining(trainer, trainee, "Morning Yoga", TrainingType.YOGA, new java.util.Date(), 60);
         assertNotNull(result);
         assertEquals("Morning Yoga", result.getTrainingName());
-        verify(trainingService).create(2L, 1L, "Morning Yoga", TrainingType.YOGA, "2024-01-01", 60);
+        verify(trainingService).create(anyLong(), eq(trainer), eq(trainee), eq("Morning Yoga"), eq(TrainingType.YOGA), any(), eq(60));
     }
 
     @Test

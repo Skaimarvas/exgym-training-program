@@ -39,19 +39,19 @@ public class TrainerDao implements Dao<Trainer> {
 
     @Override
     public void save(Trainer t) {
-        logger.info("Saving trainer: {}", t.getUserName());
+        logger.info("Saving trainer: {}", t.getUser().getUserName());
         storage.getTrainers().put(t.getId(), t);
     }
 
     @Override
     public void update(Trainer t) {
-        logger.info("Updating trainer: {}", t.getUserName());
+        logger.info("Updating trainer: {}", t.getUser().getUserName());
         storage.getTrainers().put(t.getId(), t);
     }
 
     @Override
     public void delete(Trainer t) {
-        logger.info("Deleting trainer: {}", t.getUserName());
+        logger.info("Deleting trainer: {}", t.getUser().getUserName());
         storage.getTrainers().remove(t.getId());
     }
 }

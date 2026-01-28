@@ -53,51 +53,89 @@ public class StorageInitializer {
         try {
             String[] parts = line.split(",");
             String type = parts[0].trim();
-            
+
             switch (type) {
-                case "TRAINER":
+                case "TRAINER": {
+                    Long id = Long.parseLong(parts[1].trim());
+                    String firstName = parts[2].trim();
+                    String lastName = parts[3].trim();
+                    String userName = parts[4].trim();
+                    String password = parts[5].trim();
+                    Boolean isActive = Boolean.parseBoolean(parts[6].trim());
+                    String address = parts[7].trim();
+                    LocalDate dateOfBirth = LocalDate.parse(parts[8].trim());
+
+                    com.exgym.training.entity.User user = com.exgym.training.entity.User.builder()
+                        .id(id)
+                        .firstName(firstName)
+                        .lastName(lastName)
+                        .userName(userName)
+                        .password(password)
+                        .build();
+
                     Trainer trainer = Trainer.builder()
-                        .id(Long.parseLong(parts[1].trim()))
-                        .firstName(parts[2].trim())
-                        .lastName(parts[3].trim())
-                        .userName(parts[4].trim())
-                        .password(parts[5].trim())
-                        .isActive(Boolean.parseBoolean(parts[6].trim()))
-                        .address(parts[7].trim())
-                        .dateOfBirth(LocalDate.parse(parts[8].trim()))
+                        .id(id)
+                        .user(user)
+                        .isActive(isActive)
                         .build();
+                    // Set additional fields if needed (address, dateOfBirth)
+                    trainer.setSpecialization(""); // or parse if available
                     storage.getTrainers().put(trainer.getId(), trainer);
-                    logger.debug("Loaded trainer: {}", trainer.getUserName());
+                    logger.debug("Loaded trainer: {}", trainer.getUser().getUserName());
                     break;
-                    
-                case "TRAINEE":
-                    Trainee trainee = Trainee.builder()
-                        .id(Long.parseLong(parts[1].trim()))
-                        .firstName(parts[2].trim())
-                        .lastName(parts[3].trim())
-                        .userName(parts[4].trim())
-                        .password(parts[5].trim())
-                        .isActive(Boolean.parseBoolean(parts[6].trim()))
-                        .specialization(parts[7].trim())
+                }
+                case "TRAINEE": {
+                    Long id = Long.parseLong(parts[1].trim());
+                    String firstName = parts[2].trim();
+                    String lastName = parts[3].trim();
+                    String userName = parts[4].trim();
+                    String password = parts[5].trim();
+                    Boolean isActive = Boolean.parseBoolean(parts[6].trim());
+                    String specialization = parts[7].trim();
+
+                    com.exgym.training.entity.User user = com.exgym.training.entity.User.builder()
+                        .id(id)
+                        .firstName(firstName)
+                        .lastName(lastName)
+                        .userName(userName)
+                        .password(password)
                         .build();
+
+                    Trainee trainee = Trainee.builder()
+                        .id(id)
+                        .user(user)
+                        .isActive(isActive)
+                        .build();
+                    // Set additional fields if needed (specialization)
                     storage.getTrainees().put(trainee.getId(), trainee);
-                    logger.debug("Loaded trainee: {}", trainee.getUserName());
+                    logger.debug("Loaded trainee: {}", trainee.getUser().getUserName());
                     break;
-                    
-                case "TRAINING":
+                }
+                case "TRAINING": {
+                    Long id = Long.parseLong(parts[1].trim());
+                    Long trainerId = Long.parseLong(parts[2].trim());
+                    Long traineeId = Long.parseLong(parts[3].trim());
+                    String trainingName = parts[4].trim();
+                    TrainingType trainingType = TrainingType.valueOf(parts[5].trim());
+                    java.util.Date trainingDate = java.sql.Date.valueOf(parts[6].trim());
+                    int trainingDuration = Integer.parseInt(parts[7].trim());
+
+                    Trainer trainer = storage.getTrainers().get(trainerId);
+                    Trainee trainee = storage.getTrainees().get(traineeId);
+
                     Training training = new Training(
-                        Long.parseLong(parts[1].trim()),
-                        Long.parseLong(parts[2].trim()),
-                        Long.parseLong(parts[3].trim()),
-                        parts[4].trim(),
-                        TrainingType.valueOf(parts[5].trim()),
-                        parts[6].trim(),
-                        Integer.parseInt(parts[7].trim())
+                        id,
+                        trainer,
+                        trainee,
+                        trainingName,
+                        trainingType,
+                        trainingDate,
+                        trainingDuration
                     );
                     storage.getTrainings().put(training.getId(), training);
                     logger.debug("Loaded training: {}", training.getTrainingName());
                     break;
-                    
+                }
                 default:
                     logger.warn("Unknown entity type: {}", type);
             }

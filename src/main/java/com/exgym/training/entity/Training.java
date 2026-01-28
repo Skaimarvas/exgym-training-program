@@ -1,7 +1,9 @@
 package com.exgym.training.entity;
 
-import com.exgym.training.enums.TrainingType;
+import java.util.Date;
 
+import com.exgym.training.enums.TrainingType;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -9,14 +11,25 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Data
+@Entity
 public class Training {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-    private long id;
-    private long trainerId;
-    private long traineeId;
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "trainer_id", nullable = false)
+    private Trainer trainer;
+
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "trainee_id", nullable = false)
+    private Trainee trainee;
+
     private String trainingName;
-    private TrainingType trainingType;
-    private String trainingDate;
-    private int trainingDuration;
 
+    @Enumerated(EnumType.STRING)
+    private TrainingType trainingType;
+
+    private Date trainingDate;
+    private int trainingDuration;
 }
