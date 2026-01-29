@@ -1,5 +1,6 @@
 package com.exgym.training.service;
 
+import java.util.Date;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -26,7 +27,7 @@ public class TraineeService {
         this.credentialsGenerator = credentialsGenerator;
     }
 
-    public Trainee create(String firstName, String lastName, String specialization) {
+    public Trainee create(String firstName, String lastName, String address, Date dateOfBirth) {
         logger.info("Creating trainee profile for {} {}", firstName, lastName);
         // Convert to Map<Long, User>
         java.util.Map<Long, com.exgym.training.entity.User> userMap = new java.util.HashMap<>();
@@ -45,6 +46,8 @@ public class TraineeService {
             .id(idGenerator.getAndIncrement())
             .user(user)
             .isActive(true)
+            .address(address)
+            .dateOfBirth(dateOfBirth)
             .build();
         traineeDao.save(trainee);
         logger.info("Trainee created successfully: {}", username);

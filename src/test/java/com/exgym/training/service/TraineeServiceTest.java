@@ -26,7 +26,6 @@ class TraineeServiceTest {
     @Mock
     private TraineeDao traineeDao;
 
-
     @Mock
     private CredentialsGenerator credentialsGenerator;
 
@@ -38,16 +37,18 @@ class TraineeServiceTest {
     @BeforeEach
     void setUp() {
         com.exgym.training.entity.User user = com.exgym.training.entity.User.builder()
-            .firstName("John")
-            .lastName("Doe")
-            .userName("John.Doe")
-            .password("pass123456")
-            .build();
+                .firstName("John")
+                .lastName("Doe")
+                .userName("John.Doe")
+                .password("pass123456")
+                .build();
         testTrainee = Trainee.builder()
-            .id(1L)
-            .user(user)
-            .isActive(true)
-            .build();
+                .id(1L)
+                .user(user)
+                .isActive(true)
+                .address("123 Main St")
+                .dateOfBirth(new java.util.Date())
+                .build();
         lenient().when(credentialsGenerator.generateUsername(any(), any(), any())).thenReturn("John.Doe");
         lenient().when(credentialsGenerator.generatePassword()).thenReturn("pass123456");
     }
@@ -57,7 +58,7 @@ class TraineeServiceTest {
         Map<Long, Trainee> emptyMap = new HashMap<>();
         when(traineeDao.getAll()).thenReturn(emptyMap);
 
-        Trainee created = traineeService.create("John", "Doe", "Yoga");
+        Trainee created = traineeService.create("John", "Doe", "123 Main St", new java.util.Date());
 
         assertNotNull(created);
         assertEquals("John", created.getUser().getFirstName());
@@ -76,7 +77,7 @@ class TraineeServiceTest {
         when(traineeDao.getAll()).thenReturn(existingTrainees);
 
         when(credentialsGenerator.generateUsername(any(), any(), any())).thenReturn("John.Doe1");
-        Trainee created = traineeService.create("John", "Doe", "Cardio");
+        Trainee created = traineeService.create("John", "Doe", "123 Main St", new java.util.Date());
 
         assertNotNull(created);
         assertEquals("John.Doe1", created.getUser().getUserName());

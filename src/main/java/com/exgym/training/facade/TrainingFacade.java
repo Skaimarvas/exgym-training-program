@@ -35,9 +35,9 @@ public class TrainingFacade {
         logger.info("TrainingFacade initialized with all services");
     }
 
-    public Trainee createTrainee(String firstName, String lastName, String specialization) {
+    public Trainee createTrainee(String firstName, String lastName, String address, Date dateOfBirth) {
         logger.info("Facade: Creating trainee {} {}", firstName, lastName);
-        return traineeService.create(firstName, lastName, specialization);
+        return traineeService.create(firstName, lastName, address, dateOfBirth);
     }
 
     public Trainee updateTrainee(Trainee trainee) {
@@ -55,10 +55,10 @@ public class TrainingFacade {
         return traineeService.select(traineeId);
     }
 
-    // Trainer operations
-    public Trainer createTrainer(String firstName, String lastName, String address, String dateOfBirth) {
+
+    public Trainer createTrainer(String firstName, String lastName, String specialization) {
         logger.info("Facade: Creating trainer {} {}", firstName, lastName);
-        return trainerService.create(firstName, lastName, address, dateOfBirth);
+        return trainerService.create(firstName, lastName, specialization);
     }
 
     public Trainer updateTrainer(Trainer trainer) {
@@ -71,7 +71,7 @@ public class TrainingFacade {
         return trainerService.select(trainerId);
     }
 
-    // Training operations
+  
     public Training createTraining(Trainer trainer, Trainee trainee, String trainingName,
             TrainingType trainingType, Date trainingDate, int trainingDuration) {
         logger.info("Facade: Creating training {} for trainee {} with trainer {}",

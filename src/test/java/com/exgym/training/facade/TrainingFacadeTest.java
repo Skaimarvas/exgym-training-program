@@ -99,11 +99,11 @@ class TrainingFacadeTest {
 
     @Test
     void testCreateTrainer() {
-        when(trainerService.create(any(), any(), any(), any())).thenReturn(trainer);
-        Trainer result = trainingFacade.createTrainer("Jane", "Smith", "123 Main St", "1990-01-01");
+        when(trainerService.create(any(), any(), any())).thenReturn(trainer);
+        Trainer result = trainingFacade.createTrainer("Jane", "Smith", "Yoga");
         assertNotNull(result);
         assertEquals("Jane.Smith", result.getUser().getUserName());
-        verify(trainerService).create("Jane", "Smith", "123 Main St", "1990-01-01");
+        verify(trainerService).create("Jane", "Smith", "Yoga");
     }
 
     @Test

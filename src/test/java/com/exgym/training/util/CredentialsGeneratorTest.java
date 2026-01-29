@@ -1,16 +1,16 @@
 package com.exgym.training.util;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.HashMap;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
-
-import com.exgym.training.entity.Trainee;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-
 
 @SpringBootTest
 class CredentialsGeneratorTest {
@@ -28,7 +28,7 @@ class CredentialsGeneratorTest {
     void testGenerateUsername_WithConflict() {
         Map<Long, com.exgym.training.entity.User> existingUsers = new HashMap<>();
         com.exgym.training.entity.User user = com.exgym.training.entity.User.builder()
-            .firstName("John").lastName("Doe").userName("John.Doe").password("pass").build();
+                .firstName("John").lastName("Doe").userName("John.Doe").password("pass").build();
         existingUsers.put(1L, user);
         String username = credentialsGenerator.generateUsername("John", "Doe", existingUsers);
         assertEquals("John.Doe1", username);
@@ -37,9 +37,12 @@ class CredentialsGeneratorTest {
     @Test
     void testGenerateUsername_MultipleConflicts() {
         Map<Long, com.exgym.training.entity.User> existingUsers = new HashMap<>();
-        com.exgym.training.entity.User user1 = com.exgym.training.entity.User.builder().firstName("John").lastName("Doe").userName("John.Doe").password("pass").build();
-        com.exgym.training.entity.User user2 = com.exgym.training.entity.User.builder().firstName("John").lastName("Doe").userName("John.Doe1").password("pass").build();
-        com.exgym.training.entity.User user3 = com.exgym.training.entity.User.builder().firstName("John").lastName("Doe").userName("John.Doe2").password("pass").build();
+        com.exgym.training.entity.User user1 = com.exgym.training.entity.User.builder().firstName("John")
+                .lastName("Doe").userName("John.Doe").password("pass").build();
+        com.exgym.training.entity.User user2 = com.exgym.training.entity.User.builder().firstName("John")
+                .lastName("Doe").userName("John.Doe1").password("pass").build();
+        com.exgym.training.entity.User user3 = com.exgym.training.entity.User.builder().firstName("John")
+                .lastName("Doe").userName("John.Doe2").password("pass").build();
         existingUsers.put(1L, user1);
         existingUsers.put(2L, user2);
         existingUsers.put(3L, user3);
@@ -49,10 +52,9 @@ class CredentialsGeneratorTest {
 
     @Test
     void testGeneratePassword() {
-        
+
         String password = credentialsGenerator.generatePassword();
-        
-        
+
         assertNotNull(password);
         assertEquals(10, password.length());
         assertTrue(password.matches("[A-Za-z0-9]+"));
@@ -60,11 +62,10 @@ class CredentialsGeneratorTest {
 
     @Test
     void testGeneratePassword_Uniqueness() {
-        
+
         String password1 = credentialsGenerator.generatePassword();
         String password2 = credentialsGenerator.generatePassword();
-        
-        
+
         assertNotEquals(password1, password2);
     }
 }

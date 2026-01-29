@@ -49,6 +49,7 @@ public class TrainerService {
                 .id(idGenerator.getAndIncrement())
                 .user(user)
                 .isActive(true)
+                .specialization(specialization)
                 .build();
         trainerDao.save(trainer);
         logger.info("Trainer created successfully: {}", username);

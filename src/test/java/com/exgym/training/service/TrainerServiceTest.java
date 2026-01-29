@@ -1,14 +1,18 @@
 package com.exgym.training.service;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import java.time.LocalDate;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,7 +31,6 @@ class TrainerServiceTest {
     @Mock
     private TrainerDao trainerDao;
 
-
     @Mock
     private CredentialsGenerator credentialsGenerator;
 
@@ -39,16 +42,16 @@ class TrainerServiceTest {
     @BeforeEach
     void setUp() {
         com.exgym.training.entity.User user = com.exgym.training.entity.User.builder()
-            .firstName("Jane")
-            .lastName("Smith")
-            .userName("Jane.Smith")
-            .password("pass789012")
-            .build();
+                .firstName("Jane")
+                .lastName("Smith")
+                .userName("Jane.Smith")
+                .password("pass789012")
+                .build();
         testTrainer = Trainer.builder()
-            .id(1L)
-            .user(user)
-            .isActive(true)
-            .build();
+                .id(1L)
+                .user(user)
+                .isActive(true)
+                .build();
         lenient().when(credentialsGenerator.generateUsername(any(), any(), any())).thenReturn("Jane.Smith");
         lenient().when(credentialsGenerator.generatePassword()).thenReturn("pass789012");
     }
@@ -58,7 +61,7 @@ class TrainerServiceTest {
         Map<Long, Trainer> emptyMap = new HashMap<>();
         when(trainerDao.getAll()).thenReturn(emptyMap);
 
-        Trainer created = trainerService.create("Jane", "Smith", "123 Main St", "1990-01-15");
+        Trainer created = trainerService.create("Jane", "Smith", "Yoga");
 
         assertNotNull(created);
         assertEquals("Jane", created.getUser().getFirstName());
@@ -77,7 +80,7 @@ class TrainerServiceTest {
         when(trainerDao.getAll()).thenReturn(existingTrainers);
 
         when(credentialsGenerator.generateUsername(any(), any(), any())).thenReturn("Jane.Smith1");
-        Trainer created = trainerService.create("Jane", "Smith", "456 Oak Ave", "1985-05-20");
+        Trainer created = trainerService.create("Jane", "Smith", "Yoga");
 
         assertNotNull(created);
         assertEquals("Jane.Smith1", created.getUser().getUserName());
