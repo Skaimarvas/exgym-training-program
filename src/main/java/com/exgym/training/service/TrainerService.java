@@ -1,7 +1,6 @@
 package com.exgym.training.service;
 
-import java.time.LocalDate;
-import java.time.format.DateTimeParseException;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -12,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import com.exgym.training.dao.TrainerDao;
 import com.exgym.training.entity.Trainer;
+import com.exgym.training.entity.User;
 import com.exgym.training.util.CredentialsGenerator;
 
 @Service
@@ -28,23 +28,18 @@ public class TrainerService {
         this.credentialsGenerator = credentialsGenerator;
     }
 
-    public Trainer create(String firstName, String lastName, String address, String dateOfBirth) {
+    public Trainer create(String firstName, String lastName, String specialization) {
         logger.info("Creating trainer profile for {} {}", firstName, lastName);
-        // Convert to Map<Long, User>
-        java.util.Map<Long, com.exgym.training.entity.User> userMap = new java.util.HashMap<>();
+
+        Map<Long, com.exgym.training.entity.User> userMap = new java.util.HashMap<>();
         for (Trainer t : trainerDao.getAll().values()) {
-            if (t.getUser() != null) userMap.put(t.getId(), t.getUser());
+            if (t.getUser() != null)
+                userMap.put(t.getId(), t.getUser());
         }
         String username = credentialsGenerator.generateUsername(firstName, lastName, userMap);
         String password = credentialsGenerator.generatePassword();
-        LocalDate dob;
-        try {
-            dob = LocalDate.parse(dateOfBirth);
-        } catch (DateTimeParseException e) {
-            logger.error("Invalid dateOfBirth format: {}. Expected format: yyyy-MM-dd", dateOfBirth);
-            throw new IllegalArgumentException("Invalid dateOfBirth format. Expected format: yyyy-MM-dd", e);
-        }
-        com.exgym.training.entity.User user = com.exgym.training.entity.User.builder()
+
+        User user = User.builder()
                 .firstName(firstName)
                 .lastName(lastName)
                 .userName(username)
