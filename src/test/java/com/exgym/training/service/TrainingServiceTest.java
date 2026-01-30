@@ -61,7 +61,7 @@ class TrainingServiceTest {
 
     @Test
     void testCreate() {
-        Training created = trainingService.create(1L, dummyTrainer, dummyTrainee, "Morning Yoga", TrainingType.YOGA, new java.util.Date(), 60);
+        Training created = trainingService.create(dummyTrainer, dummyTrainee, "Morning Yoga", TrainingType.YOGA, new java.util.Date(), 60);
         assertNotNull(created);
         assertEquals(dummyTrainer, created.getTrainer());
         assertEquals(dummyTrainee, created.getTrainee());
@@ -73,22 +73,22 @@ class TrainingServiceTest {
 
     @Test
     void testSelect() {
-        when(trainingDao.get(1L)).thenReturn(Optional.of(testTraining));
+        when(trainingDao.findById(1L)).thenReturn(Optional.of(testTraining));
 
         Optional<Training> result = trainingService.select(1L);
 
         assertTrue(result.isPresent());
         assertEquals(testTraining.getTrainingName(), result.get().getTrainingName());
-        verify(trainingDao, times(1)).get(1L);
+        verify(trainingDao, times(1)).findById(1L);
     }
 
     @Test
     void testSelectNonExistent() {
-        when(trainingDao.get(999L)).thenReturn(Optional.empty());
+        when(trainingDao.findById(999L)).thenReturn(Optional.empty());
 
         Optional<Training> result = trainingService.select(999L);
 
         assertFalse(result.isPresent());
-        verify(trainingDao, times(1)).get(999L);
+        verify(trainingDao, times(1)).findById(999L);
     }
 }

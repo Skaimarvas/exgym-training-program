@@ -1,17 +1,11 @@
 package com.exgym.training.service;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -51,15 +45,19 @@ class TrainerServiceTest {
                 .id(1L)
                 .user(user)
                 .isActive(true)
+                .specialization("Yoga")
                 .build();
-        lenient().when(credentialsGenerator.generateUsername(any(), any(), any())).thenReturn("Jane.Smith");
-        lenient().when(credentialsGenerator.generatePassword()).thenReturn("pass789012");
+        
+        lenient().when(credentialsGenerator.generateUsername(any(), any(), any()))
+                .thenReturn("Jane.Smith");
+        lenient().when(credentialsGenerator.generatePassword())
+                .thenReturn("pass789012");
     }
 
     @Test
     void testCreate() {
-        Map<Long, Trainer> emptyMap = new HashMap<>();
-        when(trainerDao.getAll()).thenReturn(emptyMap);
+        List<Trainer> emptyList = new ArrayList<>();
+        lenient().when(trainerDao.findAll()).thenReturn(emptyList);
 
         Trainer created = trainerService.create("Jane", "Smith", "Yoga");
 
@@ -75,11 +73,11 @@ class TrainerServiceTest {
 
     @Test
     void testCreateWithDuplicateUsername() {
-        Map<Long, Trainer> existingTrainers = new HashMap<>();
-        existingTrainers.put(1L, testTrainer);
-        when(trainerDao.getAll()).thenReturn(existingTrainers);
-
+        List<Trainer> existingTrainers = new ArrayList<>();
+        existingTrainers.add(testTrainer);
+        lenient().when(trainerDao.findAll()).thenReturn(existingTrainers);
         when(credentialsGenerator.generateUsername(any(), any(), any())).thenReturn("Jane.Smith1");
+        
         Trainer created = trainerService.create("Jane", "Smith", "Yoga");
 
         assertNotNull(created);
@@ -89,32 +87,39 @@ class TrainerServiceTest {
 
     @Test
     void testUpdate() {
-        when(trainerDao.get(1L)).thenReturn(Optional.of(testTrainer));
+        
+        when(trainerDao.existsById(testTrainer.getId())).thenReturn(true);
+        when(trainerDao.save(any(Trainer.class))).thenReturn(testTrainer);
 
         Trainer updated = trainerService.update(testTrainer);
 
         assertNotNull(updated);
         assertEquals(testTrainer.getUser().getUserName(), updated.getUser().getUserName());
-        verify(trainerDao, times(1)).update(testTrainer);
+        verify(trainerDao, times(1)).existsById(testTrainer.getId());
+        verify(trainerDao, times(1)).save(testTrainer);
     }
 
     @Test
     void testUpdateNonExistent() {
-        when(trainerDao.get(1L)).thenReturn(Optional.empty());
+        
+        when(trainerDao.existsById(testTrainer.getId())).thenReturn(false);
 
         assertThrows(IllegalArgumentException.class, () -> {
             trainerService.update(testTrainer);
         });
+        
+        verify(trainerDao, times(1)).existsById(testTrainer.getId());
+        verify(trainerDao, never()).save(any(Trainer.class));
     }
 
     @Test
     void testSelect() {
-        when(trainerDao.get(1L)).thenReturn(Optional.of(testTrainer));
+        when(trainerDao.findById(testTrainer.getId())).thenReturn(Optional.of(testTrainer));
 
-        Optional<Trainer> result = trainerService.select(1L);
+        Optional<Trainer> result = trainerService.select(testTrainer.getId());
 
         assertTrue(result.isPresent());
         assertEquals(testTrainer.getUser().getUserName(), result.get().getUser().getUserName());
-        verify(trainerDao, times(1)).get(1L);
+        verify(trainerDao, times(1)).findById(testTrainer.getId());
     }
 }

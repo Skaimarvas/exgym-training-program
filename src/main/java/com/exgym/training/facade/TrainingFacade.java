@@ -2,7 +2,6 @@ package com.exgym.training.facade;
 
 import java.util.Date;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -24,7 +23,6 @@ public class TrainingFacade {
     private final TraineeService traineeService;
     private final TrainerService trainerService;
     private final TrainingService trainingService;
-    private final AtomicLong idGenerator = new AtomicLong(1);
 
     public TrainingFacade(TraineeService traineeService,
             TrainerService trainerService,
@@ -55,7 +53,6 @@ public class TrainingFacade {
         return traineeService.select(traineeId);
     }
 
-
     public Trainer createTrainer(String firstName, String lastName, String specialization) {
         logger.info("Facade: Creating trainer {} {}", firstName, lastName);
         return trainerService.create(firstName, lastName, specialization);
@@ -71,13 +68,11 @@ public class TrainingFacade {
         return trainerService.select(trainerId);
     }
 
-  
     public Training createTraining(Trainer trainer, Trainee trainee, String trainingName,
             TrainingType trainingType, Date trainingDate, int trainingDuration) {
         logger.info("Facade: Creating training {} for trainee {} with trainer {}",
                 trainingName, trainee, trainer);
-        return trainingService.create(idGenerator.getAndIncrement(), trainer, trainee, trainingName, trainingType,
-                trainingDate, trainingDuration);
+        return trainingService.create(trainer, trainee, trainingName, trainingType, trainingDate, trainingDuration);
     }
 
     public Optional<Training> selectTraining(long trainingId) {

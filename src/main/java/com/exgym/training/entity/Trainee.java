@@ -1,5 +1,6 @@
 
 package com.exgym.training.entity;
+
 import jakarta.persistence.Id;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -7,6 +8,7 @@ import jakarta.persistence.GenerationType;
 import java.util.Date;
 import java.util.Set;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToMany;
@@ -23,19 +25,22 @@ import lombok.experimental.SuperBuilder;
 @AllArgsConstructor
 @SuperBuilder
 @Entity
-@Table(name = "trainee")
+@Table(name = "trainee", schema = "exgym")
 public class Trainee {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(nullable = false)
+    private String address;
+    @Column(nullable = false)
+    private Date dateOfBirth;
+    @Column(nullable = false)
+    private Boolean isActive;
+
     @OneToOne(optional = false)
     @JoinColumn(name = "user_id", referencedColumnName = "id", nullable = false, unique = true)
     private User user;
-
-    private String address;
-    private Date dateOfBirth;
-    private Boolean isActive;
 
     @ManyToMany(mappedBy = "trainees")
     private Set<Trainer> trainers;

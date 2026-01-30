@@ -3,10 +3,7 @@ package com.exgym.training.service;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
-import static org.mockito.Mockito.lenient;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -36,28 +33,15 @@ class TraineeServiceTest {
 
     @BeforeEach
     void setUp() {
-        com.exgym.training.entity.User user = com.exgym.training.entity.User.builder()
-                .firstName("John")
-                .lastName("Doe")
-                .userName("John.Doe")
-                .password("pass123456")
-                .build();
-        testTrainee = Trainee.builder()
-                .id(1L)
-                .user(user)
-                .isActive(true)
-                .address("123 Main St")
-                .dateOfBirth(new java.util.Date())
-                .build();
-        lenient().when(credentialsGenerator.generateUsername(any(), any(), any())).thenReturn("John.Doe");
-        lenient().when(credentialsGenerator.generatePassword()).thenReturn("pass123456");
+        testTrainee = com.exgym.training.util.TestDataLoader.loadTrainees().get(0);
+        lenient().when(credentialsGenerator.generateUsername(any(), any(), any()))
+                .thenReturn(testTrainee.getUser().getUserName());
+        lenient().when(credentialsGenerator.generatePassword())
+                .thenReturn(testTrainee.getUser().getPassword());
     }
 
     @Test
     void testCreate() {
-        Map<Long, Trainee> emptyMap = new HashMap<>();
-        when(traineeDao.getAll()).thenReturn(emptyMap);
-
         Trainee created = traineeService.create("John", "Doe", "123 Main St", new java.util.Date());
 
         assertNotNull(created);
@@ -72,11 +56,8 @@ class TraineeServiceTest {
 
     @Test
     void testCreateWithDuplicateUsername() {
-        Map<Long, Trainee> existingTrainees = new HashMap<>();
-        existingTrainees.put(1L, testTrainee);
-        when(traineeDao.getAll()).thenReturn(existingTrainees);
-
         when(credentialsGenerator.generateUsername(any(), any(), any())).thenReturn("John.Doe1");
+
         Trainee created = traineeService.create("John", "Doe", "123 Main St", new java.util.Date());
 
         assertNotNull(created);
@@ -86,50 +67,65 @@ class TraineeServiceTest {
 
     @Test
     void testUpdate() {
-        when(traineeDao.get(1L)).thenReturn(Optional.of(testTrainee));
+        
+        when(traineeDao.existsById(testTrainee.getId())).thenReturn(true);
+        when(traineeDao.save(any(Trainee.class))).thenReturn(testTrainee);
 
         Trainee updated = traineeService.update(testTrainee);
 
         assertNotNull(updated);
         assertEquals(testTrainee.getUser().getUserName(), updated.getUser().getUserName());
-        verify(traineeDao, times(1)).update(testTrainee);
+        verify(traineeDao, times(1)).existsById(testTrainee.getId());
+        verify(traineeDao, times(1)).save(testTrainee);
     }
 
     @Test
     void testUpdateNonExistent() {
-        when(traineeDao.get(1L)).thenReturn(Optional.empty());
+        
+        when(traineeDao.existsById(testTrainee.getId())).thenReturn(false);
 
         assertThrows(IllegalArgumentException.class, () -> {
             traineeService.update(testTrainee);
         });
+
+        verify(traineeDao, times(1)).existsById(testTrainee.getId());
+        verify(traineeDao, never()).save(any(Trainee.class));
     }
 
     @Test
     void testDelete() {
-        when(traineeDao.get(1L)).thenReturn(Optional.of(testTrainee));
+        
+        when(traineeDao.existsById(testTrainee.getId())).thenReturn(true);
+        
+        doNothing().when(traineeDao).deleteById(testTrainee.getId());
 
-        traineeService.delete(1L);
+        traineeService.delete(testTrainee.getId());
 
-        verify(traineeDao, times(1)).delete(testTrainee);
+        verify(traineeDao, times(1)).existsById(testTrainee.getId());
+        verify(traineeDao, times(1)).deleteById(testTrainee.getId());
     }
 
     @Test
     void testDeleteNonExistent() {
-        when(traineeDao.get(1L)).thenReturn(Optional.empty());
+        Long nonExistentId = 999L;
+        when(traineeDao.existsById(nonExistentId)).thenReturn(false);
 
         assertThrows(IllegalArgumentException.class, () -> {
-            traineeService.delete(1L);
+            traineeService.delete(nonExistentId);
         });
+
+        verify(traineeDao, times(1)).existsById(nonExistentId);
+        verify(traineeDao, never()).delete(any(Trainee.class));
     }
 
     @Test
     void testSelect() {
-        when(traineeDao.get(1L)).thenReturn(Optional.of(testTrainee));
+        when(traineeDao.findById(testTrainee.getId())).thenReturn(Optional.of(testTrainee));
 
-        Optional<Trainee> result = traineeService.select(1L);
+        Optional<Trainee> result = traineeService.select(testTrainee.getId());
 
         assertTrue(result.isPresent());
         assertEquals(testTrainee.getUser().getUserName(), result.get().getUser().getUserName());
-        verify(traineeDao, times(1)).get(1L);
+        verify(traineeDao, times(1)).findById(testTrainee.getId());
     }
 }

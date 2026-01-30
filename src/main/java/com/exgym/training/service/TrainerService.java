@@ -1,8 +1,6 @@
 package com.exgym.training.service;
 
-import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicLong;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,12 +12,19 @@ import com.exgym.training.entity.Trainer;
 import com.exgym.training.entity.User;
 import com.exgym.training.util.CredentialsGenerator;
 
+import jakarta.transaction.Transactional;
+
 @Service
 public class TrainerService {
+    
+    private void validateTrainerFields(Trainer trainer) {
+        if (trainer.getUser() == null || trainer.getUser().getFirstName() == null || trainer.getUser().getLastName() == null || trainer.getUser().getUserName() == null || trainer.getUser().getPassword() == null || trainer.getSpecialization() == null) {
+            throw new IllegalArgumentException("Missing required trainer fields");
+        }
+    }
 
     private static final Logger logger = LoggerFactory.getLogger(TrainerService.class);
     private final TrainerDao trainerDao;
-    private final AtomicLong idGenerator = new AtomicLong(1);
     private final CredentialsGenerator credentialsGenerator;
 
     @Autowired
@@ -28,50 +33,85 @@ public class TrainerService {
         this.credentialsGenerator = credentialsGenerator;
     }
 
-    public Trainer create(String firstName, String lastName, String specialization) {
-        logger.info("Creating trainer profile for {} {}", firstName, lastName);
-
-        Map<Long, com.exgym.training.entity.User> userMap = new java.util.HashMap<>();
-        for (Trainer t : trainerDao.getAll().values()) {
-            if (t.getUser() != null)
-                userMap.put(t.getId(), t.getUser());
+        public Optional<Trainer> selectByUsername(String userName) {
+            return trainerDao.findByUser_UserName(userName);
         }
-        String username = credentialsGenerator.generateUsername(firstName, lastName, userMap);
-        String password = credentialsGenerator.generatePassword();
 
+        public boolean authenticate(String userName, String password) {
+            Optional<Trainer> trainerOpt = trainerDao.findByUser_UserName(userName);
+            return trainerOpt.isPresent() && trainerOpt.get().getUser().getPassword().equals(password);
+        }
+
+        public Trainer changePassword(String userName, String oldPassword, String newPassword) {
+            Optional<Trainer> trainerOpt = trainerDao.findByUser_UserName(userName);
+            if (trainerOpt.isEmpty()) throw new IllegalArgumentException("Trainer not found");
+            Trainer trainer = trainerOpt.get();
+            if (!trainer.getUser().getPassword().equals(oldPassword)) throw new IllegalArgumentException("Old password does not match");
+            trainer.getUser().setPassword(newPassword);
+            return trainerDao.save(trainer);
+        }
+
+        @Transactional
+        public Trainer activate(String userName) {
+            Trainer trainer = trainerDao.findByUser_UserName(userName).orElseThrow(() -> new IllegalArgumentException("Trainer not found"));
+            if (Boolean.TRUE.equals(trainer.getIsActive())) throw new IllegalStateException("Trainer already active");
+            trainer.setIsActive(true);
+            return trainerDao.save(trainer);
+        }
+
+        @Transactional
+        public Trainer deactivate(String userName) {
+            Trainer trainer = trainerDao.findByUser_UserName(userName).orElseThrow(() -> new IllegalArgumentException("Trainer not found"));
+            if (Boolean.FALSE.equals(trainer.getIsActive())) throw new IllegalStateException("Trainer already inactive");
+            trainer.setIsActive(false);
+            return trainerDao.save(trainer);
+        }
+
+        @Transactional
+        public void deleteByUsername(String userName) {
+            Trainer trainer = trainerDao.findByUser_UserName(userName).orElseThrow(() -> new IllegalArgumentException("Trainer not found"));
+            trainerDao.delete(trainer);
+        }
+
+        public java.util.List<Trainer> findNotAssignedToTrainee(String traineeUserName) {
+            return trainerDao.findNotAssignedToTrainee(traineeUserName);
+        }
+
+        public Trainer create(String firstName, String lastName, String specialization) {
+        logger.info("Creating trainer profile for {} {}", firstName, lastName);
+        String username = credentialsGenerator.generateUsername(firstName, lastName, null);
+        String password = credentialsGenerator.generatePassword();
         User user = User.builder()
-                .firstName(firstName)
-                .lastName(lastName)
-                .userName(username)
-                .password(password)
-                .build();
+            .firstName(firstName)
+            .lastName(lastName)
+            .userName(username)
+            .password(password)
+            .build();
         Trainer trainer = Trainer.builder()
-                .id(idGenerator.getAndIncrement())
-                .user(user)
-                .isActive(true)
-                .specialization(specialization)
-                .build();
+            .user(user)
+            .isActive(true)
+            .specialization(specialization)
+            .build();
+        validateTrainerFields(trainer);
         trainerDao.save(trainer);
         logger.info("Trainer created successfully: {}", username);
         return trainer;
-    }
+        }
 
     public Trainer update(Trainer trainer) {
         logger.info("Updating trainer: {}", trainer.getUser().getUserName());
-
-        Optional<Trainer> existing = trainerDao.get(trainer.getId());
-        if (existing.isEmpty()) {
+        if (!trainerDao.existsById(trainer.getId())) {
             logger.error("Trainer not found with id: {}", trainer.getId());
             throw new IllegalArgumentException("Trainer not found with id: " + trainer.getId());
         }
-
-        trainerDao.update(trainer);
+        validateTrainerFields(trainer);
+        trainerDao.save(trainer);
         logger.info("Trainer updated successfully: {}", trainer.getUser().getUserName());
         return trainer;
     }
 
     public Optional<Trainer> select(long trainerId) {
         logger.debug("Selecting trainer with id: {}", trainerId);
-        return trainerDao.get(trainerId);
+        return trainerDao.findById(trainerId);
     }
 }

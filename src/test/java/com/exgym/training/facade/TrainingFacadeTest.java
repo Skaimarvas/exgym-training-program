@@ -13,6 +13,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.Date;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -40,37 +41,37 @@ class TrainingFacadeTest {
     @BeforeEach
     void setUp() {
         com.exgym.training.entity.User traineeUser = com.exgym.training.entity.User.builder()
-            .firstName("John")
-            .lastName("Doe")
-            .userName("John.Doe")
-            .password("pass123")
-            .build();
+                .firstName("John")
+                .lastName("Doe")
+                .userName("John.Doe")
+                .password("pass123")
+                .build();
         trainee = Trainee.builder()
-            .id(1L)
-            .user(traineeUser)
-            .isActive(true)
-            .build();
+                .id(1L)
+                .user(traineeUser)
+                .isActive(true)
+                .build();
         com.exgym.training.entity.User trainerUser = com.exgym.training.entity.User.builder()
-            .firstName("Jane")
-            .lastName("Smith")
-            .userName("Jane.Smith")
-            .password("pass456")
-            .build();
+                .firstName("Jane")
+                .lastName("Smith")
+                .userName("Jane.Smith")
+                .password("pass456")
+                .build();
         trainer = Trainer.builder()
-            .id(2L)
-            .user(trainerUser)
-            .isActive(true)
-            .build();
+                .id(2L)
+                .user(trainerUser)
+                .isActive(true)
+                .build();
         training = new Training(3L, trainer, trainee, "Morning Yoga", TrainingType.YOGA, new java.util.Date(), 60);
     }
 
     @Test
     void testCreateTrainee() {
-        when(traineeService.create(any(), any(), any())).thenReturn(trainee);
-        Trainee result = trainingFacade.createTrainee("John", "Doe", "Yoga");
+        when(traineeService.create(any(), any(), any(), any())).thenReturn(trainee);
+        Trainee result = trainingFacade.createTrainee("John", "Doe", "Main Street ", new Date());
         assertNotNull(result);
         assertEquals("John.Doe", result.getUser().getUserName());
-        verify(traineeService).create("John", "Doe", "Yoga");
+        verify(traineeService).create(eq("John"), eq("Doe"), eq("Main Street "), any(java.util.Date.class));
     }
 
     @Test
@@ -125,11 +126,14 @@ class TrainingFacadeTest {
 
     @Test
     void testCreateTraining() {
-        when(trainingService.create(anyLong(), any(Trainer.class), any(Trainee.class), any(), any(), any(), anyInt())).thenReturn(training);
-        Training result = trainingFacade.createTraining(trainer, trainee, "Morning Yoga", TrainingType.YOGA, new java.util.Date(), 60);
+        when(trainingService.create(any(Trainer.class), any(Trainee.class), anyString(), any(TrainingType.class), any(Date.class), anyInt()))
+            .thenReturn(training);
+        Training result = trainingFacade.createTraining(trainer, trainee, "Morning Yoga", TrainingType.YOGA,
+                new java.util.Date(), 60);
         assertNotNull(result);
         assertEquals("Morning Yoga", result.getTrainingName());
-        verify(trainingService).create(anyLong(), eq(trainer), eq(trainee), eq("Morning Yoga"), eq(TrainingType.YOGA), any(), eq(60));
+        verify(trainingService).create(eq(trainer), eq(trainee), eq("Morning Yoga"), eq(TrainingType.YOGA),
+            any(Date.class), eq(60));
     }
 
     @Test

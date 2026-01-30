@@ -1,6 +1,7 @@
 package com.exgym.training.service;
 
 import java.util.Date;
+import java.util.List;
 import java.util.Optional;
 
 import org.slf4j.Logger;
@@ -23,30 +24,33 @@ public class TrainingService {
         this.trainingDao = trainingDao;
     }
 
-    public Training create(long id, Trainer trainer, Trainee trainee, String trainingName,
+    public List<Training> getTraineeTrainings(String traineeUserName, Date fromDate, Date toDate, String trainerName, com.exgym.training.enums.TrainingType trainingType) {
+        return trainingDao.findTraineeTrainings(traineeUserName, fromDate, toDate, trainerName, trainingType);
+    }
+
+    public List<Training> getTrainerTrainings(String trainerUserName, Date fromDate, Date toDate, String traineeName) {
+        return trainingDao.findTrainerTrainings(trainerUserName, fromDate, toDate, traineeName);
+    }
+
+        public Training create(Trainer trainer, Trainee trainee, String trainingName,
             TrainingType trainingType, Date trainingDate, int trainingDuration) {
         logger.info("Creating training: {} for trainee {} with trainer {}",
-                trainingName, trainee, trainer);
-
+            trainingName, trainee, trainer);
         Training training = new Training(
-                id,
-                trainer,
-                trainee,
-                trainingName,
-                trainingType,
-                trainingDate,
-                trainingDuration);
-
+            null,
+            trainer,
+            trainee,
+            trainingName,
+            trainingType,
+            trainingDate,
+            trainingDuration);
         trainingDao.save(training);
         logger.info("Training created successfully: {}", trainingName);
         return training;
-    }
+        }
 
-    /**
-     * Selects a training profile by id.
-     */
     public Optional<Training> select(long trainingId) {
         logger.debug("Selecting training with id: {}", trainingId);
-        return trainingDao.get(trainingId);
+        return trainingDao.findById(trainingId);
     }
 }
