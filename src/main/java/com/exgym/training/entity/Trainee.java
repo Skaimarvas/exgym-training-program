@@ -12,8 +12,10 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToMany;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import jakarta.persistence.CascadeType;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
@@ -35,13 +37,15 @@ public class Trainee {
     private String address;
     @Column(nullable = false)
     private Date dateOfBirth;
-    @Column(nullable = false)
-    private Boolean isActive;
 
-    @OneToOne(optional = false)
+
+    @OneToOne(optional = false, cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumn(name = "user_id", referencedColumnName = "id", nullable = false, unique = true)
     private User user;
 
     @ManyToMany(mappedBy = "trainees")
     private Set<Trainer> trainers;
+
+    @OneToMany(mappedBy = "trainee", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<Training> trainings;
 }

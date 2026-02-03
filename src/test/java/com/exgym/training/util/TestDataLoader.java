@@ -26,11 +26,11 @@ public class TestDataLoader {
                     .lastName(row[3])
                     .userName(row[4])
                     .password(row[5])
+                    .isActive(Boolean.parseBoolean(row[6]))
                     .build();
             Trainee trainee = Trainee.builder()
                     .id(Long.parseLong(row[1]))
                     .user(user)
-                    .isActive(Boolean.parseBoolean(row[6]))
                     .address(row[7])
                     .dateOfBirth(parseDate(row[8]))
                     .build();

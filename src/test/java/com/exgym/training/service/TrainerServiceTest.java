@@ -28,13 +28,16 @@ class TrainerServiceTest {
     @Mock
     private CredentialsGenerator credentialsGenerator;
 
-    @InjectMocks
+    private UserAuthenticationService authService;
+
     private TrainerService trainerService;
 
     private Trainer testTrainer;
 
     @BeforeEach
     void setUp() {
+        authService = new UserAuthenticationService();
+        trainerService = new TrainerService(trainerDao, credentialsGenerator, authService);
         com.exgym.training.entity.User user = com.exgym.training.entity.User.builder()
                 .firstName("Jane")
                 .lastName("Smith")
@@ -121,5 +124,194 @@ class TrainerServiceTest {
         assertTrue(result.isPresent());
         assertEquals(testTrainer.getUser().getUserName(), result.get().getUser().getUserName());
         verify(trainerDao, times(1)).findById(testTrainer.getId());
+    }
+
+    @Test
+    void testSelectByUsername() {
+        when(trainerDao.findByUser_UserName("Jane.Smith")).thenReturn(Optional.of(testTrainer));
+
+        Optional<Trainer> result = trainerService.selectByUsername("Jane.Smith");
+
+        assertTrue(result.isPresent());
+        assertEquals(testTrainer.getUser().getUserName(), result.get().getUser().getUserName());
+        verify(trainerDao, times(1)).findByUser_UserName("Jane.Smith");
+    }
+
+    @Test
+    void testAuthenticate_Success() {
+        when(trainerDao.findByUser_UserName("Jane.Smith")).thenReturn(Optional.of(testTrainer));
+
+        boolean result = trainerService.authenticate("Jane.Smith", testTrainer.getUser().getPassword());
+
+        assertTrue(result);
+        verify(trainerDao, times(1)).findByUser_UserName("Jane.Smith");
+    }
+
+    @Test
+    void testAuthenticate_WrongPassword() {
+        when(trainerDao.findByUser_UserName("Jane.Smith")).thenReturn(Optional.of(testTrainer));
+
+        boolean result = trainerService.authenticate("Jane.Smith", "wrongPassword");
+
+        assertFalse(result);
+        verify(trainerDao, times(1)).findByUser_UserName("Jane.Smith");
+    }
+
+    @Test
+    void testAuthenticate_UserNotFound() {
+        when(trainerDao.findByUser_UserName("Jane.Smith")).thenReturn(Optional.empty());
+
+        boolean result = trainerService.authenticate("Jane.Smith", "password");
+
+        assertFalse(result);
+        verify(trainerDao, times(1)).findByUser_UserName("Jane.Smith");
+    }
+
+    @Test
+    void testChangePassword_Success() {
+        when(trainerDao.findByUser_UserName("Jane.Smith")).thenReturn(Optional.of(testTrainer));
+        when(trainerDao.save(any(Trainer.class))).thenReturn(testTrainer);
+
+        Trainer result = trainerService.changePassword("Jane.Smith", testTrainer.getUser().getPassword(), "newPassword123");
+
+        assertNotNull(result);
+        verify(trainerDao, times(1)).findByUser_UserName("Jane.Smith");
+        verify(trainerDao, times(1)).save(testTrainer);
+    }
+
+    @Test
+    void testChangePassword_UserNotFound() {
+        when(trainerDao.findByUser_UserName("Jane.Smith")).thenReturn(Optional.empty());
+
+        assertThrows(IllegalArgumentException.class, () -> 
+            trainerService.changePassword("Jane.Smith", "oldPassword", "newPassword")
+        );
+
+        verify(trainerDao, times(1)).findByUser_UserName("Jane.Smith");
+        verify(trainerDao, never()).save(any(Trainer.class));
+    }
+
+    @Test
+    void testChangePassword_WrongOldPassword() {
+        when(trainerDao.findByUser_UserName("Jane.Smith")).thenReturn(Optional.of(testTrainer));
+
+        assertThrows(IllegalArgumentException.class, () -> 
+            trainerService.changePassword("Jane.Smith", "wrongOldPassword", "newPassword")
+        );
+
+        verify(trainerDao, times(1)).findByUser_UserName("Jane.Smith");
+        verify(trainerDao, never()).save(any(Trainer.class));
+    }
+
+    @Test
+    void testActivate_Success() {
+        testTrainer.setIsActive(false);
+        when(trainerDao.findByUser_UserName("Jane.Smith")).thenReturn(Optional.of(testTrainer));
+        when(trainerDao.save(any(Trainer.class))).thenReturn(testTrainer);
+
+        Trainer result = trainerService.activate("Jane.Smith");
+
+        assertNotNull(result);
+        verify(trainerDao, times(1)).findByUser_UserName("Jane.Smith");
+        verify(trainerDao, times(1)).save(testTrainer);
+    }
+
+    @Test
+    void testActivate_AlreadyActive() {
+        testTrainer.setIsActive(true);
+        when(trainerDao.findByUser_UserName("Jane.Smith")).thenReturn(Optional.of(testTrainer));
+
+        assertThrows(IllegalStateException.class, () -> 
+            trainerService.activate("Jane.Smith")
+        );
+
+        verify(trainerDao, times(1)).findByUser_UserName("Jane.Smith");
+        verify(trainerDao, never()).save(any(Trainer.class));
+    }
+
+    @Test
+    void testActivate_UserNotFound() {
+        when(trainerDao.findByUser_UserName("Jane.Smith")).thenReturn(Optional.empty());
+
+        assertThrows(IllegalArgumentException.class, () -> 
+            trainerService.activate("Jane.Smith")
+        );
+
+        verify(trainerDao, times(1)).findByUser_UserName("Jane.Smith");
+        verify(trainerDao, never()).save(any(Trainer.class));
+    }
+
+    @Test
+    void testDeactivate_Success() {
+        testTrainer.setIsActive(true);
+        when(trainerDao.findByUser_UserName("Jane.Smith")).thenReturn(Optional.of(testTrainer));
+        when(trainerDao.save(any(Trainer.class))).thenReturn(testTrainer);
+
+        Trainer result = trainerService.deactivate("Jane.Smith");
+
+        assertNotNull(result);
+        verify(trainerDao, times(1)).findByUser_UserName("Jane.Smith");
+        verify(trainerDao, times(1)).save(testTrainer);
+    }
+
+    @Test
+    void testDeactivate_AlreadyInactive() {
+        testTrainer.setIsActive(false);
+        when(trainerDao.findByUser_UserName("Jane.Smith")).thenReturn(Optional.of(testTrainer));
+
+        assertThrows(IllegalStateException.class, () -> 
+            trainerService.deactivate("Jane.Smith")
+        );
+
+        verify(trainerDao, times(1)).findByUser_UserName("Jane.Smith");
+        verify(trainerDao, never()).save(any(Trainer.class));
+    }
+
+    @Test
+    void testDeactivate_UserNotFound() {
+        when(trainerDao.findByUser_UserName("Jane.Smith")).thenReturn(Optional.empty());
+
+        assertThrows(IllegalArgumentException.class, () -> 
+            trainerService.deactivate("Jane.Smith")
+        );
+
+        verify(trainerDao, times(1)).findByUser_UserName("Jane.Smith");
+        verify(trainerDao, never()).save(any(Trainer.class));
+    }
+
+    @Test
+    void testDeleteByUsername_Success() {
+        when(trainerDao.findByUser_UserName("Jane.Smith")).thenReturn(Optional.of(testTrainer));
+        doNothing().when(trainerDao).delete(testTrainer);
+
+        trainerService.deleteByUsername("Jane.Smith");
+
+        verify(trainerDao, times(1)).findByUser_UserName("Jane.Smith");
+        verify(trainerDao, times(1)).delete(testTrainer);
+    }
+
+    @Test
+    void testDeleteByUsername_UserNotFound() {
+        when(trainerDao.findByUser_UserName("Jane.Smith")).thenReturn(Optional.empty());
+
+        assertThrows(IllegalArgumentException.class, () -> 
+            trainerService.deleteByUsername("Jane.Smith")
+        );
+
+        verify(trainerDao, times(1)).findByUser_UserName("Jane.Smith");
+        verify(trainerDao, never()).delete(any(Trainer.class));
+    }
+
+    @Test
+    void testFindNotAssignedToTrainee() {
+        List<Trainer> trainers = new ArrayList<>();
+        trainers.add(testTrainer);
+        when(trainerDao.findNotAssignedToTrainee("John.Doe")).thenReturn(trainers);
+
+        List<Trainer> result = trainerService.findNotAssignedToTrainee("John.Doe");
+
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        verify(trainerDao, times(1)).findNotAssignedToTrainee("John.Doe");
     }
 }

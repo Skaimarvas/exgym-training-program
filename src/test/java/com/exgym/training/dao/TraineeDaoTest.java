@@ -16,11 +16,11 @@ class TraineeDaoTest {
                 .lastName("Doe")
                 .userName("John.Doe")
                 .password("pass123456")
+                .isActive(true)
                 .build();
         Trainee trainee = Trainee.builder()
                 .id(1L)
                 .user(user)
-                .isActive(true)
                 .build();
         Mockito.when(traineeDao.findById(1L)).thenReturn(Optional.of(trainee));
         Optional<Trainee> found = traineeDao.findById(1L);

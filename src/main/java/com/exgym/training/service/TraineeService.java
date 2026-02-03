@@ -17,69 +17,54 @@ import jakarta.transaction.Transactional;
 
 @Service
 public class TraineeService {
-    @Transactional
-    public Trainee updateTrainersList(String traineeUserName, java.util.Set<Long> trainerIds) {
-        Trainee trainee = traineeDao.findByUser_UserName(traineeUserName).orElseThrow(() -> new IllegalArgumentException("Trainee not found"));
-
-        return traineeDao.save(trainee);
-    }
-
-    
-    private void validateTraineeFields(Trainee trainee) {
-        if (trainee.getUser() == null || trainee.getUser().getFirstName() == null || trainee.getUser().getLastName() == null || trainee.getUser().getUserName() == null || trainee.getUser().getPassword() == null || trainee.getAddress() == null || trainee.getDateOfBirth() == null) {
-            throw new IllegalArgumentException("Missing required trainee fields");
-        }
-    }
 
     private static final Logger logger = LoggerFactory.getLogger(TraineeService.class);
     private final TraineeDao traineeDao;
     private final CredentialsGenerator credentialsGenerator;
+    private final UserAuthenticationService authService;
 
     @Autowired
-    public TraineeService(TraineeDao traineeDao, CredentialsGenerator credentialsGenerator) {
+    public TraineeService(TraineeDao traineeDao, CredentialsGenerator credentialsGenerator, UserAuthenticationService authService) {
         this.traineeDao = traineeDao;
         this.credentialsGenerator = credentialsGenerator;
+        this.authService = authService;
     }
 
-        public Optional<Trainee> selectByUsername(String userName) {
-            return traineeDao.findByUser_UserName(userName);
-        }
+    public Optional<Trainee> selectByUsername(String userName) {
+        return traineeDao.findByUser_UserName(userName);
+    }
 
-        public boolean authenticate(String userName, String password) {
-            Optional<Trainee> traineeOpt = traineeDao.findByUser_UserName(userName);
-            return traineeOpt.isPresent() && traineeOpt.get().getUser().getPassword().equals(password);
-        }
+    public boolean authenticate(String userName, String password) {
+        Optional<Trainee> traineeOpt = traineeDao.findByUser_UserName(userName);
+        return authService.authenticate(traineeOpt, Trainee::getUser, password);
+    }
 
-        public Trainee changePassword(String userName, String oldPassword, String newPassword) {
-            Optional<Trainee> traineeOpt = traineeDao.findByUser_UserName(userName);
-            if (traineeOpt.isEmpty()) throw new IllegalArgumentException("Trainee not found");
-            Trainee trainee = traineeOpt.get();
-            if (!trainee.getUser().getPassword().equals(oldPassword)) throw new IllegalArgumentException("Old password does not match");
-            trainee.getUser().setPassword(newPassword);
-            return traineeDao.save(trainee);
-        }
+    public Trainee changePassword(String userName, String oldPassword, String newPassword) {
+        Optional<Trainee> traineeOpt = traineeDao.findByUser_UserName(userName);
+        authService.changePassword(traineeOpt, Trainee::getUser, oldPassword, newPassword, "Trainee");
+        return traineeDao.save(traineeOpt.get());
+    }
 
-        @Transactional
-        public Trainee activate(String userName) {
-            Trainee trainee = traineeDao.findByUser_UserName(userName).orElseThrow(() -> new IllegalArgumentException("Trainee not found"));
-            if (Boolean.TRUE.equals(trainee.getIsActive())) throw new IllegalStateException("Trainee already active");
-            trainee.setIsActive(true);
-            return traineeDao.save(trainee);
-        }
+    @Transactional
+    public Trainee activate(String userName) {
+        Optional<Trainee> traineeOpt = traineeDao.findByUser_UserName(userName);
+        authService.activate(traineeOpt, Trainee::getUser, "Trainee");
+        return traineeDao.save(traineeOpt.get());
+    }
 
-        @Transactional
-        public Trainee deactivate(String userName) {
-            Trainee trainee = traineeDao.findByUser_UserName(userName).orElseThrow(() -> new IllegalArgumentException("Trainee not found"));
-            if (Boolean.FALSE.equals(trainee.getIsActive())) throw new IllegalStateException("Trainee already inactive");
-            trainee.setIsActive(false);
-            return traineeDao.save(trainee);
-        }
+    @Transactional
+    public Trainee deactivate(String userName) {
+        Optional<Trainee> traineeOpt = traineeDao.findByUser_UserName(userName);
+        authService.deactivate(traineeOpt, Trainee::getUser, "Trainee");
+        return traineeDao.save(traineeOpt.get());
+    }
 
-        @Transactional
-        public void deleteByUsername(String userName) {
-            Trainee trainee = traineeDao.findByUser_UserName(userName).orElseThrow(() -> new IllegalArgumentException("Trainee not found"));
-            traineeDao.delete(trainee);
-        }
+    @Transactional
+    public void deleteByUsername(String userName) {
+        Trainee trainee = traineeDao.findByUser_UserName(userName)
+                .orElseThrow(() -> new IllegalArgumentException("Trainee not found"));
+        traineeDao.delete(trainee);
+    }
 
     public Trainee create(String firstName, String lastName, String address, Date dateOfBirth) {
         logger.info("Creating trainee profile for {} {}", firstName, lastName);
@@ -90,13 +75,13 @@ public class TraineeService {
                 .lastName(lastName)
                 .userName(username)
                 .password(password)
+                .isActive(true)
                 .build();
         Trainee trainee = Trainee.builder()
-            .user(user)
-            .isActive(true)
-            .address(address)
-            .dateOfBirth(dateOfBirth)
-            .build();
+                .user(user)
+                .address(address)
+                .dateOfBirth(dateOfBirth)
+                .build();
         validateTraineeFields(trainee);
         traineeDao.save(trainee);
         logger.info("Trainee created successfully: {}", username);
@@ -128,5 +113,22 @@ public class TraineeService {
     public Optional<Trainee> select(long traineeId) {
         logger.debug("Selecting trainee with id: {}", traineeId);
         return traineeDao.findById(traineeId);
+    }
+
+    @Transactional
+    public Trainee updateTrainersList(String traineeUserName, java.util.Set<Long> trainerIds) {
+        Trainee trainee = traineeDao.findByUser_UserName(traineeUserName)
+                .orElseThrow(() -> new IllegalArgumentException("Trainee not found"));
+
+        return traineeDao.save(trainee);
+    }
+
+    private void validateTraineeFields(Trainee trainee) {
+        if (trainee.getUser() == null || trainee.getUser().getFirstName() == null
+                || trainee.getUser().getLastName() == null || trainee.getUser().getUserName() == null
+                || trainee.getUser().getPassword() == null || trainee.getAddress() == null
+                || trainee.getDateOfBirth() == null) {
+            throw new IllegalArgumentException("Missing required trainee fields");
+        }
     }
 }

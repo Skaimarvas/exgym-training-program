@@ -17,20 +17,16 @@ import jakarta.transaction.Transactional;
 @Service
 public class TrainerService {
     
-    private void validateTrainerFields(Trainer trainer) {
-        if (trainer.getUser() == null || trainer.getUser().getFirstName() == null || trainer.getUser().getLastName() == null || trainer.getUser().getUserName() == null || trainer.getUser().getPassword() == null || trainer.getSpecialization() == null) {
-            throw new IllegalArgumentException("Missing required trainer fields");
-        }
-    }
-
     private static final Logger logger = LoggerFactory.getLogger(TrainerService.class);
     private final TrainerDao trainerDao;
     private final CredentialsGenerator credentialsGenerator;
+    private final UserAuthenticationService authService;
 
     @Autowired
-    public TrainerService(TrainerDao trainerDao, CredentialsGenerator credentialsGenerator) {
+    public TrainerService(TrainerDao trainerDao, CredentialsGenerator credentialsGenerator, UserAuthenticationService authService) {
         this.trainerDao = trainerDao;
         this.credentialsGenerator = credentialsGenerator;
+        this.authService = authService;
     }
 
         public Optional<Trainer> selectByUsername(String userName) {
@@ -39,16 +35,13 @@ public class TrainerService {
 
         public boolean authenticate(String userName, String password) {
             Optional<Trainer> trainerOpt = trainerDao.findByUser_UserName(userName);
-            return trainerOpt.isPresent() && trainerOpt.get().getUser().getPassword().equals(password);
+            return authService.authenticate(trainerOpt, Trainer::getUser, password);
         }
 
         public Trainer changePassword(String userName, String oldPassword, String newPassword) {
             Optional<Trainer> trainerOpt = trainerDao.findByUser_UserName(userName);
-            if (trainerOpt.isEmpty()) throw new IllegalArgumentException("Trainer not found");
-            Trainer trainer = trainerOpt.get();
-            if (!trainer.getUser().getPassword().equals(oldPassword)) throw new IllegalArgumentException("Old password does not match");
-            trainer.getUser().setPassword(newPassword);
-            return trainerDao.save(trainer);
+            authService.changePassword(trainerOpt, Trainer::getUser, oldPassword, newPassword, "Trainer");
+            return trainerDao.save(trainerOpt.get());
         }
 
         @Transactional
@@ -113,5 +106,11 @@ public class TrainerService {
     public Optional<Trainer> select(long trainerId) {
         logger.debug("Selecting trainer with id: {}", trainerId);
         return trainerDao.findById(trainerId);
+    }
+
+    private void validateTrainerFields(Trainer trainer) {
+        if (trainer.getUser() == null || trainer.getUser().getFirstName() == null || trainer.getUser().getLastName() == null || trainer.getUser().getUserName() == null || trainer.getUser().getPassword() == null || trainer.getSpecialization() == null) {
+            throw new IllegalArgumentException("Missing required trainer fields");
+        }
     }
 }

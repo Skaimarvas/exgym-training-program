@@ -8,14 +8,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
 class CredentialsGeneratorTest {
-    @Autowired
     private CredentialsGenerator credentialsGenerator;
+
+    @BeforeEach
+    void setUp() {
+        credentialsGenerator = new CredentialsGenerator();
+    }
 
     @Test
     void testGenerateUsername_NoConflict() {

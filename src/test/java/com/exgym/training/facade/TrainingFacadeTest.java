@@ -45,11 +45,11 @@ class TrainingFacadeTest {
                 .lastName("Doe")
                 .userName("John.Doe")
                 .password("pass123")
+                .isActive(true)
                 .build();
         trainee = Trainee.builder()
                 .id(1L)
                 .user(traineeUser)
-                .isActive(true)
                 .build();
         com.exgym.training.entity.User trainerUser = com.exgym.training.entity.User.builder()
                 .firstName("Jane")

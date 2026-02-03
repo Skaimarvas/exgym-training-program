@@ -46,8 +46,9 @@ class TrainingServiceTest {
             .lastName("One")
             .userName("trainee.one")
             .password("pass")
+            .isActive(true)
             .build();
-        dummyTrainee = Trainee.builder().id(200L).user(traineeUser).isActive(true).build();
+        dummyTrainee = Trainee.builder().id(200L).user(traineeUser).build();
         testTraining = new Training(
             1L,
             dummyTrainer,

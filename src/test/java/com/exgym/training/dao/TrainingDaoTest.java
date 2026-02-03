@@ -27,8 +27,9 @@ class TrainingDaoTest {
                 .lastName("One")
                 .userName("trainee.one")
                 .password("pass")
+                .isActive(true)
                 .build();
-        Trainee trainee = Trainee.builder().id(200L).user(traineeUser).isActive(true).build();
+        Trainee trainee = Trainee.builder().id(200L).user(traineeUser).build();
         Training training = new Training(1L, trainer, trainee, "Morning Yoga", TrainingType.YOGA, new Date(), 60);
         Mockito.when(trainingDao.findById(1L)).thenReturn(Optional.of(training));
         Optional<Training> found = trainingDao.findById(1L);
