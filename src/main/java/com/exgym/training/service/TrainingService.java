@@ -13,6 +13,7 @@ import com.exgym.training.entity.Trainee;
 import com.exgym.training.entity.Trainer;
 import com.exgym.training.entity.Training;
 import com.exgym.training.enums.TrainingType;
+import com.exgym.training.exception.ValidationException;
 
 @Service
 public class TrainingService {
@@ -24,7 +25,8 @@ public class TrainingService {
         this.trainingDao = trainingDao;
     }
 
-    public List<Training> getTraineeTrainings(String traineeUserName, Date fromDate, Date toDate, String trainerName, com.exgym.training.enums.TrainingType trainingType) {
+    public List<Training> getTraineeTrainings(String traineeUserName, Date fromDate, Date toDate, String trainerName,
+            TrainingType trainingType) {
         return trainingDao.findTraineeTrainings(traineeUserName, fromDate, toDate, trainerName, trainingType);
     }
 
@@ -32,22 +34,43 @@ public class TrainingService {
         return trainingDao.findTrainerTrainings(trainerUserName, fromDate, toDate, traineeName);
     }
 
-        public Training create(Trainer trainer, Trainee trainee, String trainingName,
+    public Training create(Trainer trainer, Trainee trainee, String trainingName,
             TrainingType trainingType, Date trainingDate, int trainingDuration) {
         logger.info("Creating training: {} for trainee {} with trainer {}",
-            trainingName, trainee, trainer);
+                trainingName, trainee, trainer);
+        
+     
+        if (trainer == null) {
+            throw new ValidationException("Trainer is required");
+        }
+        if (trainee == null) {
+            throw new ValidationException("Trainee is required");
+        }
+        if (trainingName == null || trainingName.isBlank()) {
+            throw new ValidationException("Training name is required");
+        }
+        if (trainingType == null) {
+            throw new ValidationException("Training type is required");
+        }
+        if (trainingDate == null) {
+            throw new ValidationException("Training date is required");
+        }
+        if (trainingDuration <= 0) {
+            throw new ValidationException("Training duration must be greater than 0");
+        }
+        
         Training training = new Training(
-            null,
-            trainer,
-            trainee,
-            trainingName,
-            trainingType,
-            trainingDate,
-            trainingDuration);
+                null,
+                trainer,
+                trainee,
+                trainingName,
+                trainingType,
+                trainingDate,
+                trainingDuration);
         trainingDao.save(training);
         logger.info("Training created successfully: {}", trainingName);
         return training;
-        }
+    }
 
     public Optional<Training> select(long trainingId) {
         logger.debug("Selecting training with id: {}", trainingId);

@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-import java.util.Optional;
+import java.util.*;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,10 +14,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.exgym.training.dao.TrainingDao;
-import com.exgym.training.entity.Training;
+import com.exgym.training.entity.*;
 import com.exgym.training.enums.TrainingType;
-import com.exgym.training.entity.Trainer;
-import com.exgym.training.entity.Trainee;
 
 @ExtendWith(MockitoExtension.class)
 class TrainingServiceTest {
@@ -34,35 +32,35 @@ class TrainingServiceTest {
 
     @BeforeEach
     void setUp() {
-        com.exgym.training.entity.User trainerUser = com.exgym.training.entity.User.builder()
-            .firstName("Trainer")
-            .lastName("One")
-            .userName("trainer.one")
-            .password("pass")
-            .build();
+        User trainerUser = User.builder()
+                .firstName("Trainer")
+                .lastName("One")
+                .userName("trainer.one")
+                .password("pass")
+                .build();
         dummyTrainer = Trainer.builder().id(100L).user(trainerUser).isActive(true).build();
-        com.exgym.training.entity.User traineeUser = com.exgym.training.entity.User.builder()
-            .firstName("Trainee")
-            .lastName("One")
-            .userName("trainee.one")
-            .password("pass")
-            .isActive(true)
-            .build();
+        User traineeUser = User.builder()
+                .firstName("Trainee")
+                .lastName("One")
+                .userName("trainee.one")
+                .password("pass")
+                .isActive(true)
+                .build();
         dummyTrainee = Trainee.builder().id(200L).user(traineeUser).build();
         testTraining = new Training(
-            1L,
-            dummyTrainer,
-            dummyTrainee,
-            "Morning Yoga",
-            TrainingType.YOGA,
-            new java.util.Date(),
-            60
-        );
+                1L,
+                dummyTrainer,
+                dummyTrainee,
+                "Morning Yoga",
+                TrainingType.YOGA,
+                new Date(),
+                60);
     }
 
     @Test
     void testCreate() {
-        Training created = trainingService.create(dummyTrainer, dummyTrainee, "Morning Yoga", TrainingType.YOGA, new java.util.Date(), 60);
+        Training created = trainingService.create(dummyTrainer, dummyTrainee, "Morning Yoga", TrainingType.YOGA,
+                new Date(), 60);
         assertNotNull(created);
         assertEquals(dummyTrainer, created.getTrainer());
         assertEquals(dummyTrainee, created.getTrainee());

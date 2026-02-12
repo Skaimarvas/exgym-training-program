@@ -3,6 +3,7 @@ package com.exgym.training.facade;
 import com.exgym.training.entity.Trainee;
 import com.exgym.training.entity.Trainer;
 import com.exgym.training.entity.Training;
+import com.exgym.training.entity.User;
 import com.exgym.training.enums.TrainingType;
 import com.exgym.training.service.TraineeService;
 import com.exgym.training.service.TrainerService;
@@ -40,7 +41,7 @@ class TrainingFacadeTest {
 
     @BeforeEach
     void setUp() {
-        com.exgym.training.entity.User traineeUser = com.exgym.training.entity.User.builder()
+        User traineeUser = User.builder()
                 .firstName("John")
                 .lastName("Doe")
                 .userName("John.Doe")
@@ -51,7 +52,7 @@ class TrainingFacadeTest {
                 .id(1L)
                 .user(traineeUser)
                 .build();
-        com.exgym.training.entity.User trainerUser = com.exgym.training.entity.User.builder()
+        User trainerUser = User.builder()
                 .firstName("Jane")
                 .lastName("Smith")
                 .userName("Jane.Smith")
@@ -62,7 +63,7 @@ class TrainingFacadeTest {
                 .user(trainerUser)
                 .isActive(true)
                 .build();
-        training = new Training(3L, trainer, trainee, "Morning Yoga", TrainingType.YOGA, new java.util.Date(), 60);
+        training = new Training(3L, trainer, trainee, "Morning Yoga", TrainingType.YOGA, new Date(), 60);
     }
 
     @Test
@@ -71,7 +72,7 @@ class TrainingFacadeTest {
         Trainee result = trainingFacade.createTrainee("John", "Doe", "Main Street ", new Date());
         assertNotNull(result);
         assertEquals("John.Doe", result.getUser().getUserName());
-        verify(traineeService).create(eq("John"), eq("Doe"), eq("Main Street "), any(java.util.Date.class));
+        verify(traineeService).create(eq("John"), eq("Doe"), eq("Main Street "), any(Date.class));
     }
 
     @Test
@@ -129,7 +130,7 @@ class TrainingFacadeTest {
         when(trainingService.create(any(Trainer.class), any(Trainee.class), anyString(), any(TrainingType.class), any(Date.class), anyInt()))
             .thenReturn(training);
         Training result = trainingFacade.createTraining(trainer, trainee, "Morning Yoga", TrainingType.YOGA,
-                new java.util.Date(), 60);
+                new Date(), 60);
         assertNotNull(result);
         assertEquals("Morning Yoga", result.getTrainingName());
         verify(trainingService).create(eq(trainer), eq(trainee), eq("Morning Yoga"), eq(TrainingType.YOGA),

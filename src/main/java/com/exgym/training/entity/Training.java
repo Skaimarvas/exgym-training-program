@@ -35,6 +35,7 @@ public class Training {
 
     @Column(nullable = false)
     private Date trainingDate;
+    
     @Column(nullable = false)
     private int trainingDuration;
 }

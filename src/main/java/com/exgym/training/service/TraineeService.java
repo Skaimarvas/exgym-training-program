@@ -11,6 +11,9 @@ import org.springframework.stereotype.Service;
 
 import com.exgym.training.dao.TraineeDao;
 import com.exgym.training.entity.Trainee;
+import com.exgym.training.entity.User;
+import com.exgym.training.exception.ResourceNotFoundException;
+import com.exgym.training.exception.ValidationException;
 import com.exgym.training.util.CredentialsGenerator;
 
 import jakarta.transaction.Transactional;
@@ -62,15 +65,26 @@ public class TraineeService {
     @Transactional
     public void deleteByUsername(String userName) {
         Trainee trainee = traineeDao.findByUser_UserName(userName)
-                .orElseThrow(() -> new IllegalArgumentException("Trainee not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Trainee", "username", userName));
         traineeDao.delete(trainee);
     }
 
     public Trainee create(String firstName, String lastName, String address, Date dateOfBirth) {
         logger.info("Creating trainee profile for {} {}", firstName, lastName);
+        
+        if (firstName == null || firstName.isBlank() || lastName == null || lastName.isBlank()) {
+            throw new ValidationException("First name and last name are required");
+        }
+        if (address == null || address.isBlank()) {
+            throw new ValidationException("Address is required");
+        }
+        if (dateOfBirth == null) {
+            throw new ValidationException("Date of birth is required");
+        }
+        
         String username = credentialsGenerator.generateUsername(firstName, lastName, null);
         String password = credentialsGenerator.generatePassword();
-        com.exgym.training.entity.User user = com.exgym.training.entity.User.builder()
+        User user = User.builder()
                 .firstName(firstName)
                 .lastName(lastName)
                 .userName(username)
@@ -92,7 +106,7 @@ public class TraineeService {
         logger.info("Updating trainee: {}", trainee.getUser().getUserName());
         if (!traineeDao.existsById(trainee.getId())) {
             logger.error("Trainee not found with id: {}", trainee.getId());
-            throw new IllegalArgumentException("Trainee not found with id: " + trainee.getId());
+            throw new ResourceNotFoundException("Trainee", trainee.getId());
         }
         validateTraineeFields(trainee);
         traineeDao.save(trainee);
@@ -104,7 +118,7 @@ public class TraineeService {
         logger.info("Deleting trainee with id: {}", traineeId);
         if (!traineeDao.existsById(traineeId)) {
             logger.error("Trainee not found with id: {}", traineeId);
-            throw new IllegalArgumentException("Trainee not found with id: " + traineeId);
+            throw new ResourceNotFoundException("Trainee", traineeId);
         }
         traineeDao.deleteById(traineeId);
         logger.info("Trainee deleted successfully: {}", traineeId);
@@ -118,7 +132,7 @@ public class TraineeService {
     @Transactional
     public Trainee updateTrainersList(String traineeUserName, java.util.Set<Long> trainerIds) {
         Trainee trainee = traineeDao.findByUser_UserName(traineeUserName)
-                .orElseThrow(() -> new IllegalArgumentException("Trainee not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Trainee", "username", traineeUserName));
 
         return traineeDao.save(trainee);
     }
@@ -128,7 +142,7 @@ public class TraineeService {
                 || trainee.getUser().getLastName() == null || trainee.getUser().getUserName() == null
                 || trainee.getUser().getPassword() == null || trainee.getAddress() == null
                 || trainee.getDateOfBirth() == null) {
-            throw new IllegalArgumentException("Missing required trainee fields");
+            throw new ValidationException("Missing required trainee fields");
         }
     }
 }

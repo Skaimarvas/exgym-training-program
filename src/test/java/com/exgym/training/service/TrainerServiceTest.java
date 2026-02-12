@@ -1,8 +1,17 @@
 package com.exgym.training.service;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -11,12 +20,14 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.exgym.training.dao.TrainerDao;
 import com.exgym.training.entity.Trainer;
+import com.exgym.training.entity.User;
+import com.exgym.training.exception.InvalidCredentialsException;
+import com.exgym.training.exception.ResourceNotFoundException;
 import com.exgym.training.util.CredentialsGenerator;
 
 @ExtendWith(MockitoExtension.class)
@@ -38,7 +49,7 @@ class TrainerServiceTest {
     void setUp() {
         authService = new UserAuthenticationService();
         trainerService = new TrainerService(trainerDao, credentialsGenerator, authService);
-        com.exgym.training.entity.User user = com.exgym.training.entity.User.builder()
+        User user = User.builder()
                 .firstName("Jane")
                 .lastName("Smith")
                 .userName("Jane.Smith")
@@ -50,7 +61,7 @@ class TrainerServiceTest {
                 .isActive(true)
                 .specialization("Yoga")
                 .build();
-        
+
         lenient().when(credentialsGenerator.generateUsername(any(), any(), any()))
                 .thenReturn("Jane.Smith");
         lenient().when(credentialsGenerator.generatePassword())
@@ -80,7 +91,7 @@ class TrainerServiceTest {
         existingTrainers.add(testTrainer);
         lenient().when(trainerDao.findAll()).thenReturn(existingTrainers);
         when(credentialsGenerator.generateUsername(any(), any(), any())).thenReturn("Jane.Smith1");
-        
+
         Trainer created = trainerService.create("Jane", "Smith", "Yoga");
 
         assertNotNull(created);
@@ -90,7 +101,7 @@ class TrainerServiceTest {
 
     @Test
     void testUpdate() {
-        
+
         when(trainerDao.existsById(testTrainer.getId())).thenReturn(true);
         when(trainerDao.save(any(Trainer.class))).thenReturn(testTrainer);
 
@@ -104,13 +115,13 @@ class TrainerServiceTest {
 
     @Test
     void testUpdateNonExistent() {
-        
+
         when(trainerDao.existsById(testTrainer.getId())).thenReturn(false);
 
-        assertThrows(IllegalArgumentException.class, () -> {
+        assertThrows(ResourceNotFoundException.class, () -> {
             trainerService.update(testTrainer);
         });
-        
+
         verify(trainerDao, times(1)).existsById(testTrainer.getId());
         verify(trainerDao, never()).save(any(Trainer.class));
     }
@@ -172,7 +183,8 @@ class TrainerServiceTest {
         when(trainerDao.findByUser_UserName("Jane.Smith")).thenReturn(Optional.of(testTrainer));
         when(trainerDao.save(any(Trainer.class))).thenReturn(testTrainer);
 
-        Trainer result = trainerService.changePassword("Jane.Smith", testTrainer.getUser().getPassword(), "newPassword123");
+        Trainer result = trainerService.changePassword("Jane.Smith", testTrainer.getUser().getPassword(),
+                "newPassword123");
 
         assertNotNull(result);
         verify(trainerDao, times(1)).findByUser_UserName("Jane.Smith");
@@ -183,9 +195,8 @@ class TrainerServiceTest {
     void testChangePassword_UserNotFound() {
         when(trainerDao.findByUser_UserName("Jane.Smith")).thenReturn(Optional.empty());
 
-        assertThrows(IllegalArgumentException.class, () -> 
-            trainerService.changePassword("Jane.Smith", "oldPassword", "newPassword")
-        );
+        assertThrows(ResourceNotFoundException.class,
+                () -> trainerService.changePassword("Jane.Smith", "oldPassword", "newPassword"));
 
         verify(trainerDao, times(1)).findByUser_UserName("Jane.Smith");
         verify(trainerDao, never()).save(any(Trainer.class));
@@ -195,9 +206,8 @@ class TrainerServiceTest {
     void testChangePassword_WrongOldPassword() {
         when(trainerDao.findByUser_UserName("Jane.Smith")).thenReturn(Optional.of(testTrainer));
 
-        assertThrows(IllegalArgumentException.class, () -> 
-            trainerService.changePassword("Jane.Smith", "wrongOldPassword", "newPassword")
-        );
+        assertThrows(InvalidCredentialsException.class,
+                () -> trainerService.changePassword("Jane.Smith", "wrongOldPassword", "newPassword"));
 
         verify(trainerDao, times(1)).findByUser_UserName("Jane.Smith");
         verify(trainerDao, never()).save(any(Trainer.class));
@@ -221,9 +231,7 @@ class TrainerServiceTest {
         testTrainer.setIsActive(true);
         when(trainerDao.findByUser_UserName("Jane.Smith")).thenReturn(Optional.of(testTrainer));
 
-        assertThrows(IllegalStateException.class, () -> 
-            trainerService.activate("Jane.Smith")
-        );
+        assertThrows(IllegalStateException.class, () -> trainerService.activate("Jane.Smith"));
 
         verify(trainerDao, times(1)).findByUser_UserName("Jane.Smith");
         verify(trainerDao, never()).save(any(Trainer.class));
@@ -233,9 +241,7 @@ class TrainerServiceTest {
     void testActivate_UserNotFound() {
         when(trainerDao.findByUser_UserName("Jane.Smith")).thenReturn(Optional.empty());
 
-        assertThrows(IllegalArgumentException.class, () -> 
-            trainerService.activate("Jane.Smith")
-        );
+        assertThrows(ResourceNotFoundException.class, () -> trainerService.activate("Jane.Smith"));
 
         verify(trainerDao, times(1)).findByUser_UserName("Jane.Smith");
         verify(trainerDao, never()).save(any(Trainer.class));
@@ -259,9 +265,7 @@ class TrainerServiceTest {
         testTrainer.setIsActive(false);
         when(trainerDao.findByUser_UserName("Jane.Smith")).thenReturn(Optional.of(testTrainer));
 
-        assertThrows(IllegalStateException.class, () -> 
-            trainerService.deactivate("Jane.Smith")
-        );
+        assertThrows(IllegalStateException.class, () -> trainerService.deactivate("Jane.Smith"));
 
         verify(trainerDao, times(1)).findByUser_UserName("Jane.Smith");
         verify(trainerDao, never()).save(any(Trainer.class));
@@ -271,9 +275,7 @@ class TrainerServiceTest {
     void testDeactivate_UserNotFound() {
         when(trainerDao.findByUser_UserName("Jane.Smith")).thenReturn(Optional.empty());
 
-        assertThrows(IllegalArgumentException.class, () -> 
-            trainerService.deactivate("Jane.Smith")
-        );
+        assertThrows(ResourceNotFoundException.class, () -> trainerService.deactivate("Jane.Smith"));
 
         verify(trainerDao, times(1)).findByUser_UserName("Jane.Smith");
         verify(trainerDao, never()).save(any(Trainer.class));
@@ -294,9 +296,7 @@ class TrainerServiceTest {
     void testDeleteByUsername_UserNotFound() {
         when(trainerDao.findByUser_UserName("Jane.Smith")).thenReturn(Optional.empty());
 
-        assertThrows(IllegalArgumentException.class, () -> 
-            trainerService.deleteByUsername("Jane.Smith")
-        );
+        assertThrows(ResourceNotFoundException.class, () -> trainerService.deleteByUsername("Jane.Smith"));
 
         verify(trainerDao, times(1)).findByUser_UserName("Jane.Smith");
         verify(trainerDao, never()).delete(any(Trainer.class));

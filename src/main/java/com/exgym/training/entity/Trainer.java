@@ -28,8 +28,10 @@ public class Trainer {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    
     @Column(nullable = false)
     private String specialization;
+    
     @Column(nullable = false)
     private Boolean isActive;
 
@@ -38,6 +40,8 @@ public class Trainer {
     private User user;
 
     @ManyToMany
-    @JoinTable(name = "trainee_trainer", joinColumns = @JoinColumn(name = "trainer_id"), inverseJoinColumns = @JoinColumn(name = "trainee_id"))
+    @JoinTable(name = "trainee_trainer", 
+               joinColumns = @JoinColumn(name = "trainer_id"), 
+               inverseJoinColumns = @JoinColumn(name = "trainee_id"))
     private Set<Trainee> trainees;
 }

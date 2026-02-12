@@ -22,6 +22,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -35,6 +36,7 @@ public class Trainee {
 
     @Column(nullable = false)
     private String address;
+    
     @Column(nullable = false)
     private Date dateOfBirth;
 

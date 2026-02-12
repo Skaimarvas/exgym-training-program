@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -19,12 +20,16 @@ public class User {
 
     @Column(nullable = false)
     private String firstName;
+    
     @Column(nullable = false)
     private String lastName;
-    @Column(nullable = false)
+    
+    @Column(nullable = false, unique = true)
     private String userName;
+    
     @Column(nullable = false)
     private String password;
+    
     @Column(nullable = false)
     private Boolean isActive;
 }

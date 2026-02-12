@@ -11,6 +11,8 @@ import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.exgym.training.entity.User;
+
 class CredentialsGeneratorTest {
     private CredentialsGenerator credentialsGenerator;
 
@@ -21,15 +23,15 @@ class CredentialsGeneratorTest {
 
     @Test
     void testGenerateUsername_NoConflict() {
-        Map<Long, com.exgym.training.entity.User> existingUsers = new HashMap<>();
+        Map<Long, User> existingUsers = new HashMap<>();
         String username = credentialsGenerator.generateUsername("John", "Doe", existingUsers);
         assertEquals("John.Doe", username);
     }
 
     @Test
     void testGenerateUsername_WithConflict() {
-        Map<Long, com.exgym.training.entity.User> existingUsers = new HashMap<>();
-        com.exgym.training.entity.User user = com.exgym.training.entity.User.builder()
+        Map<Long, User> existingUsers = new HashMap<>();
+        User user = User.builder()
                 .firstName("John").lastName("Doe").userName("John.Doe").password("pass").build();
         existingUsers.put(1L, user);
         String username = credentialsGenerator.generateUsername("John", "Doe", existingUsers);
@@ -38,12 +40,12 @@ class CredentialsGeneratorTest {
 
     @Test
     void testGenerateUsername_MultipleConflicts() {
-        Map<Long, com.exgym.training.entity.User> existingUsers = new HashMap<>();
-        com.exgym.training.entity.User user1 = com.exgym.training.entity.User.builder().firstName("John")
+        Map<Long, User> existingUsers = new HashMap<>();
+        User user1 = User.builder().firstName("John")
                 .lastName("Doe").userName("John.Doe").password("pass").build();
-        com.exgym.training.entity.User user2 = com.exgym.training.entity.User.builder().firstName("John")
+        User user2 = User.builder().firstName("John")
                 .lastName("Doe").userName("John.Doe1").password("pass").build();
-        com.exgym.training.entity.User user3 = com.exgym.training.entity.User.builder().firstName("John")
+        User user3 = User.builder().firstName("John")
                 .lastName("Doe").userName("John.Doe2").password("pass").build();
         existingUsers.put(1L, user1);
         existingUsers.put(2L, user2);

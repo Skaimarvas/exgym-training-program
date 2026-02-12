@@ -1,21 +1,34 @@
 package com.exgym.training.service;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
+import java.util.Date;
 import java.util.Optional;
+import java.util.Set;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.exgym.training.dao.TraineeDao;
 import com.exgym.training.entity.Trainee;
+import com.exgym.training.exception.InvalidCredentialsException;
+import com.exgym.training.exception.ResourceNotFoundException;
 import com.exgym.training.util.CredentialsGenerator;
+import com.exgym.training.util.TestDataLoader;
 
 @ExtendWith(MockitoExtension.class)
 class TraineeServiceTest {
@@ -36,7 +49,7 @@ class TraineeServiceTest {
     void setUp() {
         authService = new UserAuthenticationService();
         traineeService = new TraineeService(traineeDao, credentialsGenerator, authService);
-        testTrainee = com.exgym.training.util.TestDataLoader.loadTrainees().get(0);
+        testTrainee = TestDataLoader.loadTrainees().get(0);
         lenient().when(credentialsGenerator.generateUsername(any(), any(), any()))
                 .thenReturn(testTrainee.getUser().getUserName());
         lenient().when(credentialsGenerator.generatePassword())
@@ -45,7 +58,7 @@ class TraineeServiceTest {
 
     @Test
     void testCreate() {
-        Trainee created = traineeService.create("John", "Doe", "123 Main St", new java.util.Date());
+        Trainee created = traineeService.create("John", "Doe", "123 Main St", new Date());
 
         assertNotNull(created);
         assertEquals("John", created.getUser().getFirstName());
@@ -61,7 +74,7 @@ class TraineeServiceTest {
     void testCreateWithDuplicateUsername() {
         when(credentialsGenerator.generateUsername(any(), any(), any())).thenReturn("John.Doe1");
 
-        Trainee created = traineeService.create("John", "Doe", "123 Main St", new java.util.Date());
+        Trainee created = traineeService.create("John", "Doe", "123 Main St", new Date());
 
         assertNotNull(created);
         assertEquals("John.Doe1", created.getUser().getUserName());
@@ -70,7 +83,7 @@ class TraineeServiceTest {
 
     @Test
     void testUpdate() {
-        
+
         when(traineeDao.existsById(testTrainee.getId())).thenReturn(true);
         when(traineeDao.save(any(Trainee.class))).thenReturn(testTrainee);
 
@@ -84,10 +97,10 @@ class TraineeServiceTest {
 
     @Test
     void testUpdateNonExistent() {
-        
+
         when(traineeDao.existsById(testTrainee.getId())).thenReturn(false);
 
-        assertThrows(IllegalArgumentException.class, () -> {
+        assertThrows(ResourceNotFoundException.class, () -> {
             traineeService.update(testTrainee);
         });
 
@@ -97,9 +110,9 @@ class TraineeServiceTest {
 
     @Test
     void testDelete() {
-        
+
         when(traineeDao.existsById(testTrainee.getId())).thenReturn(true);
-        
+
         doNothing().when(traineeDao).deleteById(testTrainee.getId());
 
         traineeService.delete(testTrainee.getId());
@@ -113,7 +126,7 @@ class TraineeServiceTest {
         Long nonExistentId = 999L;
         when(traineeDao.existsById(nonExistentId)).thenReturn(false);
 
-        assertThrows(IllegalArgumentException.class, () -> {
+        assertThrows(ResourceNotFoundException.class, () -> {
             traineeService.delete(nonExistentId);
         });
 
@@ -178,7 +191,8 @@ class TraineeServiceTest {
         when(traineeDao.findByUser_UserName("John.Doe")).thenReturn(Optional.of(testTrainee));
         when(traineeDao.save(any(Trainee.class))).thenReturn(testTrainee);
 
-        Trainee result = traineeService.changePassword("John.Doe", testTrainee.getUser().getPassword(), "newPassword123");
+        Trainee result = traineeService.changePassword("John.Doe", testTrainee.getUser().getPassword(),
+                "newPassword123");
 
         assertNotNull(result);
         verify(traineeDao, times(1)).findByUser_UserName("John.Doe");
@@ -189,9 +203,8 @@ class TraineeServiceTest {
     void testChangePassword_UserNotFound() {
         when(traineeDao.findByUser_UserName("John.Doe")).thenReturn(Optional.empty());
 
-        assertThrows(IllegalArgumentException.class, () -> 
-            traineeService.changePassword("John.Doe", "oldPassword", "newPassword")
-        );
+        assertThrows(ResourceNotFoundException.class,
+                () -> traineeService.changePassword("John.Doe", "oldPassword", "newPassword"));
 
         verify(traineeDao, times(1)).findByUser_UserName("John.Doe");
         verify(traineeDao, never()).save(any(Trainee.class));
@@ -201,9 +214,8 @@ class TraineeServiceTest {
     void testChangePassword_WrongOldPassword() {
         when(traineeDao.findByUser_UserName("John.Doe")).thenReturn(Optional.of(testTrainee));
 
-        assertThrows(IllegalArgumentException.class, () -> 
-            traineeService.changePassword("John.Doe", "wrongOldPassword", "newPassword")
-        );
+        assertThrows(InvalidCredentialsException.class,
+                () -> traineeService.changePassword("John.Doe", "wrongOldPassword", "newPassword"));
 
         verify(traineeDao, times(1)).findByUser_UserName("John.Doe");
         verify(traineeDao, never()).save(any(Trainee.class));
@@ -227,9 +239,7 @@ class TraineeServiceTest {
         testTrainee.getUser().setIsActive(true);
         when(traineeDao.findByUser_UserName("John.Doe")).thenReturn(Optional.of(testTrainee));
 
-        assertThrows(IllegalStateException.class, () -> 
-            traineeService.activate("John.Doe")
-        );
+        assertThrows(IllegalStateException.class, () -> traineeService.activate("John.Doe"));
 
         verify(traineeDao, times(1)).findByUser_UserName("John.Doe");
         verify(traineeDao, never()).save(any(Trainee.class));
@@ -239,9 +249,7 @@ class TraineeServiceTest {
     void testActivate_UserNotFound() {
         when(traineeDao.findByUser_UserName("John.Doe")).thenReturn(Optional.empty());
 
-        assertThrows(IllegalArgumentException.class, () -> 
-            traineeService.activate("John.Doe")
-        );
+        assertThrows(ResourceNotFoundException.class, () -> traineeService.activate("John.Doe"));
 
         verify(traineeDao, times(1)).findByUser_UserName("John.Doe");
         verify(traineeDao, never()).save(any(Trainee.class));
@@ -265,9 +273,7 @@ class TraineeServiceTest {
         testTrainee.getUser().setIsActive(false);
         when(traineeDao.findByUser_UserName("John.Doe")).thenReturn(Optional.of(testTrainee));
 
-        assertThrows(IllegalStateException.class, () -> 
-            traineeService.deactivate("John.Doe")
-        );
+        assertThrows(IllegalStateException.class, () -> traineeService.deactivate("John.Doe"));
 
         verify(traineeDao, times(1)).findByUser_UserName("John.Doe");
         verify(traineeDao, never()).save(any(Trainee.class));
@@ -277,9 +283,7 @@ class TraineeServiceTest {
     void testDeactivate_UserNotFound() {
         when(traineeDao.findByUser_UserName("John.Doe")).thenReturn(Optional.empty());
 
-        assertThrows(IllegalArgumentException.class, () -> 
-            traineeService.deactivate("John.Doe")
-        );
+        assertThrows(ResourceNotFoundException.class, () -> traineeService.deactivate("John.Doe"));
 
         verify(traineeDao, times(1)).findByUser_UserName("John.Doe");
         verify(traineeDao, never()).save(any(Trainee.class));
@@ -300,9 +304,7 @@ class TraineeServiceTest {
     void testDeleteByUsername_UserNotFound() {
         when(traineeDao.findByUser_UserName("John.Doe")).thenReturn(Optional.empty());
 
-        assertThrows(IllegalArgumentException.class, () -> 
-            traineeService.deleteByUsername("John.Doe")
-        );
+        assertThrows(ResourceNotFoundException.class, () -> traineeService.deleteByUsername("John.Doe"));
 
         verify(traineeDao, times(1)).findByUser_UserName("John.Doe");
         verify(traineeDao, never()).delete(any(Trainee.class));
@@ -324,9 +326,8 @@ class TraineeServiceTest {
     void testUpdateTrainersList_UserNotFound() {
         when(traineeDao.findByUser_UserName("John.Doe")).thenReturn(Optional.empty());
 
-        assertThrows(IllegalArgumentException.class, () -> 
-            traineeService.updateTrainersList("John.Doe", java.util.Set.of(1L, 2L))
-        );
+        assertThrows(ResourceNotFoundException.class,
+                () -> traineeService.updateTrainersList("John.Doe", Set.of(1L, 2L)));
 
         verify(traineeDao, times(1)).findByUser_UserName("John.Doe");
         verify(traineeDao, never()).save(any(Trainee.class));
