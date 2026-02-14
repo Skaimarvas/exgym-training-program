@@ -2,19 +2,20 @@ package com.exgym.training.entity;
 
 import java.util.Set;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
-import jakarta.persistence.Id;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-
-import lombok.AllArgsConstructor;
-import lombok.Data;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
@@ -28,10 +29,10 @@ public class Trainer {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    
+
     @Column(nullable = false)
     private String specialization;
-    
+
     @Column(nullable = false)
     private Boolean isActive;
 
@@ -40,8 +41,9 @@ public class Trainer {
     private User user;
 
     @ManyToMany
-    @JoinTable(name = "trainee_trainer", 
-               joinColumns = @JoinColumn(name = "trainer_id"), 
-               inverseJoinColumns = @JoinColumn(name = "trainee_id"))
+    @JoinTable(name = "trainee_trainer", joinColumns = @JoinColumn(name = "trainer_id"), inverseJoinColumns = @JoinColumn(name = "trainee_id"))
     private Set<Trainee> trainees;
+    
+    @OneToMany(mappedBy = "trainer", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<Training> trainings;
 }
