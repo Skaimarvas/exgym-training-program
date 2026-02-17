@@ -2,7 +2,6 @@ package com.exgym.training.entity;
 
 import java.util.Date;
 
-import com.exgym.training.enums.TrainingType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -29,9 +28,9 @@ public class Training {
     @Column(nullable = false)
     private String trainingName;
     
-    @Column(nullable = false)
-    @Enumerated(EnumType.STRING)
-    private TrainingType trainingType;
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "training_type_id", nullable = false)
+    private TrainingTypeEntity trainingType;
 
     @Column(nullable = false)
     private Date trainingDate;

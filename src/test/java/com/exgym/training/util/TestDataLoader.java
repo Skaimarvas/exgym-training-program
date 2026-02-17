@@ -3,8 +3,8 @@ package com.exgym.training.util;
 import com.exgym.training.entity.Trainee;
 import com.exgym.training.entity.Trainer;
 import com.exgym.training.entity.Training;
+import com.exgym.training.entity.TrainingTypeEntity;
 import com.exgym.training.entity.User;
-import com.exgym.training.enums.TrainingType;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -47,11 +47,11 @@ public class TestDataLoader {
                     .lastName(row[3])
                     .userName(row[4])
                     .password(row[5])
+                    .isActive(Boolean.parseBoolean(row[6]))
                     .build();
             Trainer trainer = Trainer.builder()
                     .id(Long.parseLong(row[1]))
                     .user(user)
-                    .isActive(Boolean.parseBoolean(row[6]))
                     .specialization(row[7])
                     .build();
             trainers.add(trainer);
@@ -71,7 +71,8 @@ public class TestDataLoader {
             training.setTrainer(trainerMap.get(Long.parseLong(row[2])));
             training.setTrainee(traineeMap.get(Long.parseLong(row[3])));
             training.setTrainingName(row[4]);
-            training.setTrainingType(TrainingType.valueOf(row[5]));
+            TrainingTypeEntity trainingType = new TrainingTypeEntity(null, row[5]);
+            training.setTrainingType(trainingType);
             training.setTrainingDate(parseDate(row[6]));
             training.setTrainingDuration(Integer.parseInt(row[7]));
             trainings.add(training);

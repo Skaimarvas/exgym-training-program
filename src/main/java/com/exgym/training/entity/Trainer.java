@@ -31,9 +31,6 @@ public class Trainer {
     
     @Column(nullable = false)
     private String specialization;
-    
-    @Column(nullable = false)
-    private Boolean isActive;
 
     @OneToOne(optional = false)
     @JoinColumn(name = "user_id", referencedColumnName = "id", nullable = false, unique = true)

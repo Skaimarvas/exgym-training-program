@@ -1,7 +1,6 @@
 package com.exgym.training.dao;
 
 import com.exgym.training.entity.Training;
-import com.exgym.training.enums.TrainingType;
 
 import java.util.Date;
 import java.util.List;
@@ -17,9 +16,9 @@ public interface TrainingDao extends JpaRepository<Training, Long> {
 			+ " AND (:fromDate IS NULL OR t.trainingDate >= :fromDate)"
 			+ " AND (:toDate IS NULL OR t.trainingDate <= :toDate)"
 			+ " AND (:trainerName IS NULL OR t.trainer.user.userName = :trainerName)"
-			+ " AND (:trainingType IS NULL OR t.trainingType = :trainingType)")
+			+ " AND (:trainingTypeName IS NULL OR t.trainingType.trainingTypeName = :trainingTypeName)")
 	List<Training> findTraineeTrainings(String traineeUserName, Date fromDate, Date toDate, String trainerName,
-			TrainingType trainingType);
+			String trainingTypeName);
 
 	@Query("SELECT t FROM Training t WHERE t.trainer.user.userName = :trainerUserName"
 			+ " AND (:fromDate IS NULL OR t.trainingDate >= :fromDate)"

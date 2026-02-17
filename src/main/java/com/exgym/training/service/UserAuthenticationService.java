@@ -31,23 +31,10 @@ public class UserAuthenticationService {
         user.setPassword(newPassword);
     }
 
-    public <T> void activate(Optional<T> entityOpt, Function<T, User> userExtractor, String entityType) {
+    public <T> void toggleActivation(Optional<T> entityOpt, Function<T, User> userExtractor, String entityType) {
         T entity = entityOpt.orElseThrow(() -> new ResourceNotFoundException(entityType + " not found"));
         User user = userExtractor.apply(entity);
 
-        if (Boolean.TRUE.equals(user.getIsActive()))
-            throw new IllegalStateException(entityType + " already active");
-
-        user.setIsActive(true);
-    }
-
-    public <T> void deactivate(Optional<T> entityOpt, Function<T, User> userExtractor, String entityType) {
-        T entity = entityOpt.orElseThrow(() -> new ResourceNotFoundException(entityType + " not found"));
-        User user = userExtractor.apply(entity);
-
-        if (Boolean.FALSE.equals(user.getIsActive()))
-            throw new IllegalStateException(entityType + " already inactive");
-
-        user.setIsActive(false);
+        user.setIsActive(!Boolean.TRUE.equals(user.getIsActive()));
     }
 }

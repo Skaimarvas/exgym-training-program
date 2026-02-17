@@ -1,6 +1,7 @@
 package com.exgym.training.util;
 
 import java.security.SecureRandom;
+import java.util.HashMap;
 import java.util.Map;
 
 import org.slf4j.Logger;
@@ -23,8 +24,11 @@ public class CredentialsGenerator {
         String baseUsername = firstName + "." + lastName;
         String username = baseUsername;
         int serial = 1;
+        
+        // Handle null existingUsers by treating as empty
+        Map<Long, ? extends User> users = existingUsers != null ? existingUsers : new HashMap<>();
 
-        while (usernameExists(username, existingUsers)) {
+        while (usernameExists(username, users)) {
             username = baseUsername + serial;
             serial++;
         }

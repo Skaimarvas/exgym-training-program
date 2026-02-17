@@ -49,16 +49,9 @@ public class TraineeService {
     }
 
     @Transactional
-    public Trainee activate(String userName) {
+    public Trainee toggleActivation(String userName) {
         Optional<Trainee> traineeOpt = traineeDao.findByUser_UserName(userName);
-        authService.activate(traineeOpt, Trainee::getUser, "Trainee");
-        return traineeDao.save(traineeOpt.get());
-    }
-
-    @Transactional
-    public Trainee deactivate(String userName) {
-        Optional<Trainee> traineeOpt = traineeDao.findByUser_UserName(userName);
-        authService.deactivate(traineeOpt, Trainee::getUser, "Trainee");
+        authService.toggleActivation(traineeOpt, Trainee::getUser, "Trainee");
         return traineeDao.save(traineeOpt.get());
     }
 
@@ -74,12 +67,6 @@ public class TraineeService {
         
         if (firstName == null || firstName.isBlank() || lastName == null || lastName.isBlank()) {
             throw new ValidationException("First name and last name are required");
-        }
-        if (address == null || address.isBlank()) {
-            throw new ValidationException("Address is required");
-        }
-        if (dateOfBirth == null) {
-            throw new ValidationException("Date of birth is required");
         }
         
         String username = credentialsGenerator.generateUsername(firstName, lastName, null);

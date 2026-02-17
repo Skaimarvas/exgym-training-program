@@ -14,8 +14,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.exgym.training.dao.TrainingDao;
+import com.exgym.training.dao.TrainingTypeDao;
 import com.exgym.training.entity.*;
-import com.exgym.training.enums.TrainingType;
 
 @ExtendWith(MockitoExtension.class)
 class TrainingServiceTest {
@@ -23,12 +23,16 @@ class TrainingServiceTest {
     @Mock
     private TrainingDao trainingDao;
 
+    @Mock
+    private TrainingTypeDao trainingTypeDao;
+
     @InjectMocks
     private TrainingService trainingService;
 
     private Training testTraining;
     private Trainer dummyTrainer;
     private Trainee dummyTrainee;
+    private TrainingTypeEntity trainingTypeEntity;
 
     @BeforeEach
     void setUp() {
@@ -38,7 +42,7 @@ class TrainingServiceTest {
                 .userName("trainer.one")
                 .password("pass")
                 .build();
-        dummyTrainer = Trainer.builder().id(100L).user(trainerUser).isActive(true).build();
+        dummyTrainer = Trainer.builder().id(100L).user(trainerUser).build();
         User traineeUser = User.builder()
                 .firstName("Trainee")
                 .lastName("One")
@@ -47,25 +51,27 @@ class TrainingServiceTest {
                 .isActive(true)
                 .build();
         dummyTrainee = Trainee.builder().id(200L).user(traineeUser).build();
+        trainingTypeEntity = new TrainingTypeEntity(1L, "YOGA");
         testTraining = new Training(
                 1L,
                 dummyTrainer,
                 dummyTrainee,
                 "Morning Yoga",
-                TrainingType.YOGA,
+                trainingTypeEntity,
                 new Date(),
                 60);
     }
 
     @Test
     void testCreate() {
-        Training created = trainingService.create(dummyTrainer, dummyTrainee, "Morning Yoga", TrainingType.YOGA,
+        when(trainingTypeDao.findByTrainingTypeName("YOGA")).thenReturn(Optional.of(trainingTypeEntity));
+        Training created = trainingService.create(dummyTrainer, dummyTrainee, "Morning Yoga", "YOGA",
                 new Date(), 60);
         assertNotNull(created);
         assertEquals(dummyTrainer, created.getTrainer());
         assertEquals(dummyTrainee, created.getTrainee());
         assertEquals("Morning Yoga", created.getTrainingName());
-        assertEquals(TrainingType.YOGA, created.getTrainingType());
+        assertEquals(trainingTypeEntity, created.getTrainingType());
         assertEquals(60, created.getTrainingDuration());
         verify(trainingDao, times(1)).save(any(Training.class));
     }

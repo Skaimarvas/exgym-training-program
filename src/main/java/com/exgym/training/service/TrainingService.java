@@ -9,10 +9,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import com.exgym.training.dao.TrainingDao;
+import com.exgym.training.dao.TrainingTypeDao;
 import com.exgym.training.entity.Trainee;
 import com.exgym.training.entity.Trainer;
 import com.exgym.training.entity.Training;
-import com.exgym.training.enums.TrainingType;
+import com.exgym.training.entity.TrainingTypeEntity;
+import com.exgym.training.exception.ResourceNotFoundException;
 import com.exgym.training.exception.ValidationException;
 
 @Service
@@ -20,14 +22,16 @@ public class TrainingService {
 
     private static final Logger logger = LoggerFactory.getLogger(TrainingService.class);
     private final TrainingDao trainingDao;
+    private final TrainingTypeDao trainingTypeDao;
 
-    public TrainingService(TrainingDao trainingDao) {
+    public TrainingService(TrainingDao trainingDao, TrainingTypeDao trainingTypeDao) {
         this.trainingDao = trainingDao;
+        this.trainingTypeDao = trainingTypeDao;
     }
 
     public List<Training> getTraineeTrainings(String traineeUserName, Date fromDate, Date toDate, String trainerName,
-            TrainingType trainingType) {
-        return trainingDao.findTraineeTrainings(traineeUserName, fromDate, toDate, trainerName, trainingType);
+            String trainingTypeName) {
+        return trainingDao.findTraineeTrainings(traineeUserName, fromDate, toDate, trainerName, trainingTypeName);
     }
 
     public List<Training> getTrainerTrainings(String trainerUserName, Date fromDate, Date toDate, String traineeName) {
@@ -35,7 +39,7 @@ public class TrainingService {
     }
 
     public Training create(Trainer trainer, Trainee trainee, String trainingName,
-            TrainingType trainingType, Date trainingDate, int trainingDuration) {
+            String trainingTypeName, Date trainingDate, int trainingDuration) {
         logger.info("Creating training: {} for trainee {} with trainer {}",
                 trainingName, trainee, trainer);
         
@@ -49,7 +53,7 @@ public class TrainingService {
         if (trainingName == null || trainingName.isBlank()) {
             throw new ValidationException("Training name is required");
         }
-        if (trainingType == null) {
+        if (trainingTypeName == null || trainingTypeName.isBlank()) {
             throw new ValidationException("Training type is required");
         }
         if (trainingDate == null) {
@@ -58,6 +62,9 @@ public class TrainingService {
         if (trainingDuration <= 0) {
             throw new ValidationException("Training duration must be greater than 0");
         }
+        
+        TrainingTypeEntity trainingType = trainingTypeDao.findByTrainingTypeName(trainingTypeName)
+                .orElseThrow(() -> new ResourceNotFoundException("TrainingType", "name", trainingTypeName));
         
         Training training = new Training(
                 null,
