@@ -49,22 +49,10 @@ public class TrainerService {
     }
 
     @Transactional
-    public Trainer activate(String userName) {
+    public Trainer toggleActivation(String userName) {
         Trainer trainer = trainerDao.findByUser_UserName(userName)
                 .orElseThrow(() -> new ResourceNotFoundException("Trainer", "username", userName));
-        if (Boolean.TRUE.equals(trainer.getIsActive()))
-            throw new IllegalStateException("Trainer already active");
-        trainer.setIsActive(true);
-        return trainerDao.save(trainer);
-    }
-
-    @Transactional
-    public Trainer deactivate(String userName) {
-        Trainer trainer = trainerDao.findByUser_UserName(userName)
-                .orElseThrow(() -> new ResourceNotFoundException("Trainer", "username", userName));
-        if (Boolean.FALSE.equals(trainer.getIsActive()))
-            throw new IllegalStateException("Trainer already inactive");
-        trainer.setIsActive(false);
+        trainer.getUser().setIsActive(!Boolean.TRUE.equals(trainer.getUser().getIsActive()));
         return trainerDao.save(trainer);
     }
 
@@ -96,10 +84,10 @@ public class TrainerService {
                 .lastName(lastName)
                 .userName(username)
                 .password(password)
+                .isActive(true)
                 .build();
         Trainer trainer = Trainer.builder()
                 .user(user)
-                .isActive(true)
                 .specialization(specialization)
                 .build();
         validateTrainerFields(trainer);

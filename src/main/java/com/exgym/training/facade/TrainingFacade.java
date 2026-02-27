@@ -10,7 +10,6 @@ import org.springframework.stereotype.Component;
 import com.exgym.training.entity.Trainee;
 import com.exgym.training.entity.Trainer;
 import com.exgym.training.entity.Training;
-import com.exgym.training.enums.TrainingType;
 import com.exgym.training.service.TraineeService;
 import com.exgym.training.service.TrainerService;
 import com.exgym.training.service.TrainingService;
@@ -69,10 +68,10 @@ public class TrainingFacade {
     }
 
     public Training createTraining(Trainer trainer, Trainee trainee, String trainingName,
-            TrainingType trainingType, Date trainingDate, int trainingDuration) {
+            String trainingTypeName, Date trainingDate, int trainingDuration) {
         logger.info("Facade: Creating training {} for trainee {} with trainer {}",
                 trainingName, trainee, trainer);
-        return trainingService.create(trainer, trainee, trainingName, trainingType, trainingDate, trainingDuration);
+        return trainingService.create(trainer, trainee, trainingName, trainingTypeName, trainingDate, trainingDuration);
     }
 
     public Optional<Training> selectTraining(long trainingId) {

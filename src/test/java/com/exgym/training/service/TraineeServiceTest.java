@@ -222,68 +222,38 @@ class TraineeServiceTest {
     }
 
     @Test
-    void testActivate_Success() {
+    void testToggleActivation_FromInactiveToActive() {
         testTrainee.getUser().setIsActive(false);
         when(traineeDao.findByUser_UserName("John.Doe")).thenReturn(Optional.of(testTrainee));
         when(traineeDao.save(any(Trainee.class))).thenReturn(testTrainee);
 
-        Trainee result = traineeService.activate("John.Doe");
+        Trainee result = traineeService.toggleActivation("John.Doe");
 
         assertNotNull(result);
+        assertTrue(result.getUser().getIsActive());
         verify(traineeDao, times(1)).findByUser_UserName("John.Doe");
         verify(traineeDao, times(1)).save(testTrainee);
     }
 
     @Test
-    void testActivate_AlreadyActive() {
-        testTrainee.getUser().setIsActive(true);
-        when(traineeDao.findByUser_UserName("John.Doe")).thenReturn(Optional.of(testTrainee));
-
-        assertThrows(IllegalStateException.class, () -> traineeService.activate("John.Doe"));
-
-        verify(traineeDao, times(1)).findByUser_UserName("John.Doe");
-        verify(traineeDao, never()).save(any(Trainee.class));
-    }
-
-    @Test
-    void testActivate_UserNotFound() {
-        when(traineeDao.findByUser_UserName("John.Doe")).thenReturn(Optional.empty());
-
-        assertThrows(ResourceNotFoundException.class, () -> traineeService.activate("John.Doe"));
-
-        verify(traineeDao, times(1)).findByUser_UserName("John.Doe");
-        verify(traineeDao, never()).save(any(Trainee.class));
-    }
-
-    @Test
-    void testDeactivate_Success() {
+    void testToggleActivation_FromActiveToInactive() {
         testTrainee.getUser().setIsActive(true);
         when(traineeDao.findByUser_UserName("John.Doe")).thenReturn(Optional.of(testTrainee));
         when(traineeDao.save(any(Trainee.class))).thenReturn(testTrainee);
 
-        Trainee result = traineeService.deactivate("John.Doe");
+        Trainee result = traineeService.toggleActivation("John.Doe");
 
         assertNotNull(result);
+        assertFalse(result.getUser().getIsActive());
         verify(traineeDao, times(1)).findByUser_UserName("John.Doe");
         verify(traineeDao, times(1)).save(testTrainee);
     }
 
     @Test
-    void testDeactivate_AlreadyInactive() {
-        testTrainee.getUser().setIsActive(false);
-        when(traineeDao.findByUser_UserName("John.Doe")).thenReturn(Optional.of(testTrainee));
-
-        assertThrows(IllegalStateException.class, () -> traineeService.deactivate("John.Doe"));
-
-        verify(traineeDao, times(1)).findByUser_UserName("John.Doe");
-        verify(traineeDao, never()).save(any(Trainee.class));
-    }
-
-    @Test
-    void testDeactivate_UserNotFound() {
+    void testToggleActivation_UserNotFound() {
         when(traineeDao.findByUser_UserName("John.Doe")).thenReturn(Optional.empty());
 
-        assertThrows(ResourceNotFoundException.class, () -> traineeService.deactivate("John.Doe"));
+        assertThrows(ResourceNotFoundException.class, () -> traineeService.toggleActivation("John.Doe"));
 
         verify(traineeDao, times(1)).findByUser_UserName("John.Doe");
         verify(traineeDao, never()).save(any(Trainee.class));

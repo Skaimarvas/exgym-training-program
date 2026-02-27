@@ -3,8 +3,8 @@ package com.exgym.training.facade;
 import com.exgym.training.entity.Trainee;
 import com.exgym.training.entity.Trainer;
 import com.exgym.training.entity.Training;
+import com.exgym.training.entity.TrainingTypeEntity;
 import com.exgym.training.entity.User;
-import com.exgym.training.enums.TrainingType;
 import com.exgym.training.service.TraineeService;
 import com.exgym.training.service.TrainerService;
 import com.exgym.training.service.TrainingService;
@@ -61,9 +61,9 @@ class TrainingFacadeTest {
         trainer = Trainer.builder()
                 .id(2L)
                 .user(trainerUser)
-                .isActive(true)
                 .build();
-        training = new Training(3L, trainer, trainee, "Morning Yoga", TrainingType.YOGA, new Date(), 60);
+        TrainingTypeEntity trainingType = new TrainingTypeEntity(1L, "YOGA");
+        training = new Training(3L, trainer, trainee, "Morning Yoga", trainingType, new Date(), 60);
     }
 
     @Test
@@ -127,13 +127,13 @@ class TrainingFacadeTest {
 
     @Test
     void testCreateTraining() {
-        when(trainingService.create(any(Trainer.class), any(Trainee.class), anyString(), any(TrainingType.class), any(Date.class), anyInt()))
+        when(trainingService.create(any(Trainer.class), any(Trainee.class), anyString(), anyString(), any(Date.class), anyInt()))
             .thenReturn(training);
-        Training result = trainingFacade.createTraining(trainer, trainee, "Morning Yoga", TrainingType.YOGA,
+        Training result = trainingFacade.createTraining(trainer, trainee, "Morning Yoga", "YOGA",
                 new Date(), 60);
         assertNotNull(result);
         assertEquals("Morning Yoga", result.getTrainingName());
-        verify(trainingService).create(eq(trainer), eq(trainee), eq("Morning Yoga"), eq(TrainingType.YOGA),
+        verify(trainingService).create(eq(trainer), eq(trainee), eq("Morning Yoga"), eq("YOGA"),
             any(Date.class), eq(60));
     }
 
