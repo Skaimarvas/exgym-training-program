@@ -29,6 +29,7 @@ import com.exgym.training.entity.User;
 import com.exgym.training.exception.InvalidCredentialsException;
 import com.exgym.training.exception.ResourceNotFoundException;
 import com.exgym.training.util.CredentialsGenerator;
+import com.exgym.training.config.metrics.TrainingMetrics;
 
 @ExtendWith(MockitoExtension.class)
 class TrainerServiceTest {
@@ -39,6 +40,9 @@ class TrainerServiceTest {
     @Mock
     private CredentialsGenerator credentialsGenerator;
 
+    @Mock
+    private TrainingMetrics trainingMetrics;
+
     private UserAuthenticationService authService;
 
     private TrainerService trainerService;
@@ -48,7 +52,7 @@ class TrainerServiceTest {
     @BeforeEach
     void setUp() {
         authService = new UserAuthenticationService();
-        trainerService = new TrainerService(trainerDao, credentialsGenerator, authService);
+        trainerService = new TrainerService(trainerDao, credentialsGenerator, authService, trainingMetrics);
         User user = User.builder()
                 .firstName("Jane")
                 .lastName("Smith")

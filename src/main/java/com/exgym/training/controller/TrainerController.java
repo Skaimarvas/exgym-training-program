@@ -137,7 +137,7 @@ public class TrainerController {
                 .map(training -> new TrainingListResponse.TrainingInfo(
                     training.getTrainingName(),
                     training.getTrainingDate(),
-                    training.getTrainingType(),
+                    training.getTrainingType().getTrainingTypeName(),
                     training.getTrainingDuration(),
                     training.getTrainer().getUser().getUserName()
                 ))

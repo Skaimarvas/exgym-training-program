@@ -2,8 +2,6 @@ package com.exgym.training.dto.request;
 
 import java.util.Date;
 
-import com.exgym.training.enums.TrainingType;
-
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -23,5 +21,5 @@ public class GetTraineeTrainingsRequest {
     
     private String trainerName;
     
-    private TrainingType trainingType;
+    private String trainingType;
 }

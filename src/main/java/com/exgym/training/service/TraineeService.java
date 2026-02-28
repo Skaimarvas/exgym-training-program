@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.exgym.training.config.metrics.TrainingMetrics;
 import com.exgym.training.dao.TraineeDao;
 import com.exgym.training.entity.Trainee;
 import com.exgym.training.entity.User;
@@ -25,12 +26,15 @@ public class TraineeService {
     private final TraineeDao traineeDao;
     private final CredentialsGenerator credentialsGenerator;
     private final UserAuthenticationService authService;
+    private final TrainingMetrics trainingMetrics;
 
     @Autowired
-    public TraineeService(TraineeDao traineeDao, CredentialsGenerator credentialsGenerator, UserAuthenticationService authService) {
+    public TraineeService(TraineeDao traineeDao, CredentialsGenerator credentialsGenerator, 
+                         UserAuthenticationService authService, TrainingMetrics trainingMetrics) {
         this.traineeDao = traineeDao;
         this.credentialsGenerator = credentialsGenerator;
         this.authService = authService;
+        this.trainingMetrics = trainingMetrics;
     }
 
     public Optional<Trainee> selectByUsername(String userName) {
@@ -85,6 +89,7 @@ public class TraineeService {
                 .build();
         validateTraineeFields(trainee);
         traineeDao.save(trainee);
+        trainingMetrics.incrementTraineeRegistration();
         logger.info("Trainee created successfully: {}", username);
         return trainee;
     }

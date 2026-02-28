@@ -29,6 +29,7 @@ import com.exgym.training.exception.InvalidCredentialsException;
 import com.exgym.training.exception.ResourceNotFoundException;
 import com.exgym.training.util.CredentialsGenerator;
 import com.exgym.training.util.TestDataLoader;
+import com.exgym.training.config.metrics.TrainingMetrics;
 
 @ExtendWith(MockitoExtension.class)
 class TraineeServiceTest {
@@ -39,6 +40,9 @@ class TraineeServiceTest {
     @Mock
     private CredentialsGenerator credentialsGenerator;
 
+    @Mock
+    private TrainingMetrics trainingMetrics;
+
     private UserAuthenticationService authService;
 
     private TraineeService traineeService;
@@ -48,7 +52,7 @@ class TraineeServiceTest {
     @BeforeEach
     void setUp() {
         authService = new UserAuthenticationService();
-        traineeService = new TraineeService(traineeDao, credentialsGenerator, authService);
+        traineeService = new TraineeService(traineeDao, credentialsGenerator, authService, trainingMetrics);
         testTrainee = TestDataLoader.loadTrainees().get(0);
         lenient().when(credentialsGenerator.generateUsername(any(), any(), any()))
                 .thenReturn(testTrainee.getUser().getUserName());

@@ -1,5 +1,6 @@
 package com.exgym.training.facade;
 
+import com.exgym.training.config.metrics.TrainingMetrics;
 import com.exgym.training.entity.Trainee;
 import com.exgym.training.entity.Trainer;
 import com.exgym.training.entity.Training;
@@ -31,6 +32,8 @@ class TrainingFacadeTest {
     private TrainerService trainerService;
     @Mock
     private TrainingService trainingService;
+    @Mock
+    private TrainingMetrics trainingMetrics;
 
     @InjectMocks
     private TrainingFacade trainingFacade;

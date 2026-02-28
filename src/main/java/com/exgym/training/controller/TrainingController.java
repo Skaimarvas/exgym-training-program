@@ -1,6 +1,5 @@
 package com.exgym.training.controller;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -14,11 +13,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.exgym.training.dao.TrainingTypeDao;
 import com.exgym.training.dto.request.AddTrainingRequest;
 import com.exgym.training.dto.response.TrainingTypeResponse;
 import com.exgym.training.entity.Trainee;
 import com.exgym.training.entity.Trainer;
-import com.exgym.training.enums.TrainingType;
+import com.exgym.training.entity.TrainingTypeEntity;
 import com.exgym.training.exception.ResourceNotFoundException;
 import com.exgym.training.service.TraineeService;
 import com.exgym.training.service.TrainerService;
@@ -40,13 +40,15 @@ public class TrainingController {
     private final TrainingService trainingService;
     private final TraineeService traineeService;
     private final TrainerService trainerService;
+    private final TrainingTypeDao trainingTypeDao;
 
     @Autowired
     public TrainingController(TrainingService trainingService, TraineeService traineeService, 
-                             TrainerService trainerService) {
+                             TrainerService trainerService, TrainingTypeDao trainingTypeDao) {
         this.trainingService = trainingService;
         this.traineeService = traineeService;
         this.trainerService = trainerService;
+        this.trainingTypeDao = trainingTypeDao;
     }
 
     @Operation(summary = "Add training", description = "Create a new training session")
@@ -66,19 +68,14 @@ public class TrainingController {
         Trainer trainer = trainerService.selectByUsername(request.getTrainerUsername())
                 .orElseThrow(() -> new ResourceNotFoundException("Trainer", "username", request.getTrainerUsername()));
         
-        // Use trainer's specialization as training type if available
-        TrainingType trainingType = null;
-        try {
-            trainingType = TrainingType.valueOf(trainer.getSpecialization().toUpperCase());
-        } catch (IllegalArgumentException e) {
-            logger.warn("Trainer specialization '{}' does not match any TrainingType", trainer.getSpecialization());
-        }
+        // Use trainer's specialization as training type
+        String trainingTypeName = trainer.getSpecialization();
         
         trainingService.create(
             trainer,
             trainee,
             request.getTrainingName(),
-            trainingType,
+            trainingTypeName,
             request.getTrainingDate(),
             request.getTrainingDuration()
         );
@@ -95,10 +92,11 @@ public class TrainingController {
     public ResponseEntity<TrainingTypeResponse> getTrainingTypes() {
         logger.debug("Fetching all training types");
         
-        List<TrainingTypeResponse.TrainingTypeInfo> trainingTypes = Arrays.stream(TrainingType.values())
+        List<TrainingTypeEntity> allTypes = trainingTypeDao.findAll();
+        List<TrainingTypeResponse.TrainingTypeInfo> trainingTypes = allTypes.stream()
                 .map(type -> new TrainingTypeResponse.TrainingTypeInfo(
-                    type.name(),
-                    type.ordinal()
+                    type.getTrainingTypeName(),
+                    type.getId().intValue()
                 ))
                 .collect(Collectors.toList());
         

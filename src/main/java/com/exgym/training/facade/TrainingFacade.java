@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import com.exgym.training.config.metrics.TrainingMetrics;
 import com.exgym.training.entity.Trainee;
 import com.exgym.training.entity.Trainer;
 import com.exgym.training.entity.Training;
@@ -22,13 +23,16 @@ public class TrainingFacade {
     private final TraineeService traineeService;
     private final TrainerService trainerService;
     private final TrainingService trainingService;
+    private final TrainingMetrics trainingMetrics;
 
     public TrainingFacade(TraineeService traineeService,
             TrainerService trainerService,
-            TrainingService trainingService) {
+            TrainingService trainingService,
+            TrainingMetrics trainingMetrics) {
         this.traineeService = traineeService;
         this.trainerService = trainerService;
         this.trainingService = trainingService;
+        this.trainingMetrics = trainingMetrics;
         logger.info("TrainingFacade initialized with all services");
     }
 
@@ -71,7 +75,9 @@ public class TrainingFacade {
             String trainingTypeName, Date trainingDate, int trainingDuration) {
         logger.info("Facade: Creating training {} for trainee {} with trainer {}",
                 trainingName, trainee, trainer);
-        return trainingService.create(trainer, trainee, trainingName, trainingTypeName, trainingDate, trainingDuration);
+        Training training = trainingService.create(trainer, trainee, trainingName, trainingTypeName, trainingDate, trainingDuration);
+        trainingMetrics.incrementTrainingCreation();
+        return training;
     }
 
     public Optional<Training> selectTraining(long trainingId) {
