@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.exgym.training.dao.TrainerDao;
+import com.exgym.training.dao.UserDao;
 import com.exgym.training.entity.Trainer;
 import com.exgym.training.entity.User;
 import com.exgym.training.exception.ResourceNotFoundException;
@@ -22,13 +23,15 @@ public class TrainerService {
 
     private static final Logger logger = LoggerFactory.getLogger(TrainerService.class);
     private final TrainerDao trainerDao;
+    private final UserDao userDao;
     private final CredentialsGenerator credentialsGenerator;
     private final UserAuthenticationService authService;
 
     @Autowired
-    public TrainerService(TrainerDao trainerDao, CredentialsGenerator credentialsGenerator,
+    public TrainerService(TrainerDao trainerDao, UserDao userDao, CredentialsGenerator credentialsGenerator,
             UserAuthenticationService authService) {
         this.trainerDao = trainerDao;
+        this.userDao = userDao;
         this.credentialsGenerator = credentialsGenerator;
         this.authService = authService;
     }
@@ -77,7 +80,9 @@ public class TrainerService {
             throw new ValidationException("Specialization is required");
         }
         
-        String username = credentialsGenerator.generateUsername(firstName, lastName, null);
+        java.util.Map<Long, User> existingUsers = userDao.findAll().stream()
+            .collect(java.util.stream.Collectors.toMap(User::getId, user -> user));
+        String username = credentialsGenerator.generateUsername(firstName, lastName, existingUsers);
         String password = credentialsGenerator.generatePassword();
         User user = User.builder()
                 .firstName(firstName)

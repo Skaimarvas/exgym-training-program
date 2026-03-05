@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.exgym.training.dao.TraineeDao;
+import com.exgym.training.dao.UserDao;
 import com.exgym.training.entity.Trainee;
 import com.exgym.training.entity.User;
 import com.exgym.training.exception.ResourceNotFoundException;
@@ -23,12 +24,15 @@ public class TraineeService {
 
     private static final Logger logger = LoggerFactory.getLogger(TraineeService.class);
     private final TraineeDao traineeDao;
+    private final UserDao userDao;
     private final CredentialsGenerator credentialsGenerator;
     private final UserAuthenticationService authService;
 
     @Autowired
-    public TraineeService(TraineeDao traineeDao, CredentialsGenerator credentialsGenerator, UserAuthenticationService authService) {
+    public TraineeService(TraineeDao traineeDao, UserDao userDao, CredentialsGenerator credentialsGenerator,
+            UserAuthenticationService authService) {
         this.traineeDao = traineeDao;
+        this.userDao = userDao;
         this.credentialsGenerator = credentialsGenerator;
         this.authService = authService;
     }
@@ -69,7 +73,9 @@ public class TraineeService {
             throw new ValidationException("First name and last name are required");
         }
         
-        String username = credentialsGenerator.generateUsername(firstName, lastName, null);
+        java.util.Map<Long, User> existingUsers = userDao.findAll().stream()
+            .collect(java.util.stream.Collectors.toMap(User::getId, user -> user));
+        String username = credentialsGenerator.generateUsername(firstName, lastName, existingUsers);
         String password = credentialsGenerator.generatePassword();
         User user = User.builder()
                 .firstName(firstName)
@@ -127,8 +133,7 @@ public class TraineeService {
     private void validateTraineeFields(Trainee trainee) {
         if (trainee.getUser() == null || trainee.getUser().getFirstName() == null
                 || trainee.getUser().getLastName() == null || trainee.getUser().getUserName() == null
-                || trainee.getUser().getPassword() == null || trainee.getAddress() == null
-                || trainee.getDateOfBirth() == null) {
+                || trainee.getUser().getPassword() == null) {
             throw new ValidationException("Missing required trainee fields");
         }
     }

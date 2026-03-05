@@ -30,6 +30,7 @@ import com.exgym.training.dto.response.TrainingListResponse;
 import com.exgym.training.dto.response.UpdateTraineeProfileResponse;
 import com.exgym.training.entity.Trainee;
 import com.exgym.training.entity.Trainer;
+import com.exgym.training.entity.Training;
 import com.exgym.training.exception.ResourceNotFoundException;
 import com.exgym.training.service.TraineeService;
 import com.exgym.training.service.TrainerService;
@@ -215,19 +216,19 @@ public class TraineeController {
             @Valid @RequestBody GetTraineeTrainingsRequest request) {
         logger.debug("Fetching trainings for trainee: {}", request.getUsername());
         
-        var trainings = trainingService.getTraineeTrainings(
+        List<Training> trainings = trainingService.getTraineeTrainings(
             request.getUsername(),
             request.getPeriodFrom(),
             request.getPeriodTo(),
             request.getTrainerName(),
-            request.getTrainingType()
+            request.getTrainingTypeName()
         );
         
         List<TrainingListResponse.TrainingInfo> trainingInfos = trainings.stream()
                 .map(training -> new TrainingListResponse.TrainingInfo(
                     training.getTrainingName(),
                     training.getTrainingDate(),
-                    training.getTrainingType(),
+                    training.getTrainingType().getTrainingTypeName(),
                     training.getTrainingDuration(),
                     training.getTrainer().getUser().getUserName()
                 ))

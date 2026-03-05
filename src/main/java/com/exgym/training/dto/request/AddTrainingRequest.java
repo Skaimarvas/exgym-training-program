@@ -23,6 +23,9 @@ public class AddTrainingRequest {
     @NotBlank(message = "Training name is required")
     private String trainingName;
     
+    @NotBlank(message = "Training type name is required")
+    private String trainingTypeName;
+    
     @NotNull(message = "Training date is required")
     private Date trainingDate;
     

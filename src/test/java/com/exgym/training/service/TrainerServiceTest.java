@@ -24,6 +24,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.exgym.training.dao.TrainerDao;
+import com.exgym.training.dao.UserDao;
 import com.exgym.training.entity.Trainer;
 import com.exgym.training.entity.User;
 import com.exgym.training.exception.InvalidCredentialsException;
@@ -37,6 +38,9 @@ class TrainerServiceTest {
     private TrainerDao trainerDao;
 
     @Mock
+    private UserDao userDao;
+
+    @Mock
     private CredentialsGenerator credentialsGenerator;
 
     private UserAuthenticationService authService;
@@ -48,7 +52,7 @@ class TrainerServiceTest {
     @BeforeEach
     void setUp() {
         authService = new UserAuthenticationService();
-        trainerService = new TrainerService(trainerDao, credentialsGenerator, authService);
+        trainerService = new TrainerService(trainerDao, userDao, credentialsGenerator, authService);
         User user = User.builder()
                 .firstName("Jane")
                 .lastName("Smith")
@@ -61,6 +65,7 @@ class TrainerServiceTest {
                 .specialization("Yoga")
                 .build();
 
+        lenient().when(userDao.findAll()).thenReturn(new ArrayList<>());
         lenient().when(credentialsGenerator.generateUsername(any(), any(), any()))
                 .thenReturn("Jane.Smith");
         lenient().when(credentialsGenerator.generatePassword())
@@ -86,9 +91,9 @@ class TrainerServiceTest {
 
     @Test
     void testCreateWithDuplicateUsername() {
-        List<Trainer> existingTrainers = new ArrayList<>();
-        existingTrainers.add(testTrainer);
-        lenient().when(trainerDao.findAll()).thenReturn(existingTrainers);
+        List<User> existingUsers = new ArrayList<>();
+        existingUsers.add(testTrainer.getUser());
+        when(userDao.findAll()).thenReturn(existingUsers);
         when(credentialsGenerator.generateUsername(any(), any(), any())).thenReturn("Jane.Smith1");
 
         Trainer created = trainerService.create("Jane", "Smith", "Yoga");

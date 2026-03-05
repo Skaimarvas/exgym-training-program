@@ -13,7 +13,9 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -24,7 +26,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.exgym.training.dao.TraineeDao;
+import com.exgym.training.dao.UserDao;
 import com.exgym.training.entity.Trainee;
+import com.exgym.training.entity.User;
 import com.exgym.training.exception.InvalidCredentialsException;
 import com.exgym.training.exception.ResourceNotFoundException;
 import com.exgym.training.util.CredentialsGenerator;
@@ -35,6 +39,9 @@ class TraineeServiceTest {
 
     @Mock
     private TraineeDao traineeDao;
+
+    @Mock
+    private UserDao userDao;
 
     @Mock
     private CredentialsGenerator credentialsGenerator;
@@ -48,8 +55,9 @@ class TraineeServiceTest {
     @BeforeEach
     void setUp() {
         authService = new UserAuthenticationService();
-        traineeService = new TraineeService(traineeDao, credentialsGenerator, authService);
+        traineeService = new TraineeService(traineeDao, userDao, credentialsGenerator, authService);
         testTrainee = TestDataLoader.loadTrainees().get(0);
+        lenient().when(userDao.findAll()).thenReturn(new ArrayList<>());
         lenient().when(credentialsGenerator.generateUsername(any(), any(), any()))
                 .thenReturn(testTrainee.getUser().getUserName());
         lenient().when(credentialsGenerator.generatePassword())
@@ -72,6 +80,9 @@ class TraineeServiceTest {
 
     @Test
     void testCreateWithDuplicateUsername() {
+        List<User> existingUsers = new ArrayList<>();
+        existingUsers.add(testTrainee.getUser());
+        when(userDao.findAll()).thenReturn(existingUsers);
         when(credentialsGenerator.generateUsername(any(), any(), any())).thenReturn("John.Doe1");
 
         Trainee created = traineeService.create("John", "Doe", "123 Main St", new Date());

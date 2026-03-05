@@ -2,8 +2,11 @@ package com.exgym.training.dto.request;
 
 import java.util.Date;
 
+import org.jspecify.annotations.Nullable;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Past;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -22,8 +25,11 @@ public class UpdateTraineeProfileRequest {
     @NotBlank(message = "Last name is required")
     private String lastName;
     
+    @Nullable
+    @Past(message = "Date of birth must be in the past")
     private Date dateOfBirth;
     
+    @Nullable
     private String address;
     
     @NotNull(message = "Is active status is required")
