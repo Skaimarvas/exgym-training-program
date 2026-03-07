@@ -16,6 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.exgym.training.dao.TrainingDao;
 import com.exgym.training.dao.TrainingTypeDao;
 import com.exgym.training.entity.*;
+import com.exgym.training.exception.ValidationException;
 
 @ExtendWith(MockitoExtension.class)
 class TrainingServiceTest {
@@ -65,8 +66,9 @@ class TrainingServiceTest {
     @Test
     void testCreate() {
         when(trainingTypeDao.findByTrainingTypeName("YOGA")).thenReturn(Optional.of(trainingTypeEntity));
+        Date tomorrow = new Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000);
         Training created = trainingService.create(dummyTrainer, dummyTrainee, "Morning Yoga", "YOGA",
-                new Date(), 60);
+            tomorrow, 60);
         assertNotNull(created);
         assertEquals(dummyTrainer, created.getTrainer());
         assertEquals(dummyTrainee, created.getTrainee());
@@ -74,6 +76,41 @@ class TrainingServiceTest {
         assertEquals(trainingTypeEntity, created.getTrainingType());
         assertEquals(60, created.getTrainingDuration());
         verify(trainingDao, times(1)).save(any(Training.class));
+    }
+
+    @Test
+    void testCreate_UsesUppercaseFallbackForTrainingType() {
+        when(trainingTypeDao.findByTrainingTypeName("yoga")).thenReturn(Optional.empty());
+        when(trainingTypeDao.findByTrainingTypeName("YOGA")).thenReturn(Optional.of(trainingTypeEntity));
+
+        Date tomorrow = new Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000);
+        Training created = trainingService.create(dummyTrainer, dummyTrainee, "Morning Yoga", "yoga", tomorrow, 60);
+
+        assertNotNull(created);
+        verify(trainingTypeDao, times(1)).findByTrainingTypeName("yoga");
+        verify(trainingTypeDao, times(1)).findByTrainingTypeName("YOGA");
+    }
+
+    @Test
+    void testCreate_ThrowsWhenTrainingDateInPast() {
+        Date yesterday = new Date(System.currentTimeMillis() - 24 * 60 * 60 * 1000);
+
+        assertThrows(ValidationException.class,
+                () -> trainingService.create(dummyTrainer, dummyTrainee, "Morning Yoga", "YOGA", yesterday, 60));
+
+        verify(trainingTypeDao, never()).findByTrainingTypeName(any());
+        verify(trainingDao, never()).save(any(Training.class));
+    }
+
+    @Test
+    void testCreate_ThrowsWhenTrainingDurationTooLarge() {
+        Date tomorrow = new Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000);
+
+        assertThrows(ValidationException.class,
+                () -> trainingService.create(dummyTrainer, dummyTrainee, "Morning Yoga", "YOGA", tomorrow, 1000));
+
+        verify(trainingTypeDao, never()).findByTrainingTypeName(any());
+        verify(trainingDao, never()).save(any(Training.class));
     }
 
     @Test

@@ -1,4 +1,4 @@
-package com.exgym.training.dto.request;
+package com.exgym.training.dto.trainee.request;
 
 import java.util.List;
 

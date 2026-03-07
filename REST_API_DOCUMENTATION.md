@@ -1,7 +1,7 @@
 # ExGym Training Program - REST API Implementation
 
 ## Overview
-This document describes the complete REST API implementation for the ExGym Training Program application. All 17 required endpoints have been implemented with proper validation, error handling, transaction logging, and Swagger documentation.
+This document describes the complete REST API implementation for the ExGym Training Program application. All implemented endpoints are documented with current validation, error handling, transaction logging, and Swagger/OpenAPI details.
 
 ## Architecture Changes
 
@@ -13,39 +13,23 @@ com.exgym.training/
 │   ├── LoggingInterceptor.java
 │   ├── OpenApiConfig.java
 │   ├── SecurityConfig.java
+│   ├── TrainingTypeDataInitializer.java
 │   └── WebConfig.java
 ├── controller/              # REST controllers
 │   ├── TraineeController.java
 │   ├── TrainerController.java
 │   ├── TrainingController.java
+│   ├── TrainingTypeController.java
 │   └── UserController.java
 ├── dto/
-│   ├── request/            # Request DTOs
-│   │   ├── ActivateDeactivateRequest.java
-│   │   ├── AddTrainingRequest.java
-│   │   ├── ChangePasswordRequest.java
-│   │   ├── GetProfileRequest.java
-│   │   ├── GetTraineeTrainingsRequest.java
-│   │   ├── GetTrainerTrainingsRequest.java
-│   │   ├── LoginRequest.java
-│   │   ├── TraineeRegistrationRequest.java
-│   │   ├── TrainerRegistrationRequest.java
-│   │   ├── UpdateTraineeProfileRequest.java
-│   │   ├── UpdateTraineeTrainerListRequest.java
-│   │   └── UpdateTrainerProfileRequest.java
-│   └── response/           # Response DTOs
-│       ├── ErrorResponse.java
-│       ├── RegistrationResponse.java
-│       ├── TraineeProfileResponse.java
-│       ├── TrainerListResponse.java
-│       ├── TrainerProfileResponse.java
-│       ├── TrainingListResponse.java
-│       ├── TrainingTypeResponse.java
-│       ├── UpdateTraineeProfileResponse.java
-│       └── UpdateTrainerProfileResponse.java
+│   ├── common/             # Shared DTOs
+│   ├── trainee/            # Trainee request/response DTOs
+│   ├── trainer/            # Trainer request/response DTOs
+│   ├── training/           # Training request/response DTOs
+│   └── user/               # User request/response DTOs
 ├── util/
 │   └── TransactionContext.java  # ThreadLocal transaction ID storage
-└── (existing packages: dao, entity, enums, exception, facade, service)
+└── (existing packages: dao, entity, exception, facade, service)
 ```
 
 ### 2. **New Dependencies Added**
@@ -54,106 +38,121 @@ com.exgym.training/
 
 ## API Endpoints
 
-### Base URL: `/api`
+### Base URL: `/api/v1`
 
-### 1. User Authentication (`/api/user`)
+### 1. User Authentication (`/api/v1/user`)
 
 #### Login
-- **Endpoint**: `GET /api/user/login`
+- **Endpoint**: `POST /api/v1/user/login`
 - **Request**: LoginRequest { username, password }
 - **Response**: 200 OK
 - **Description**: Authenticate trainee or trainer
 
 #### Change Password
-- **Endpoint**: `PUT /api/user/change-password`
+- **Endpoint**: `PUT /api/v1/user/change-password`
 - **Request**: ChangePasswordRequest { username, oldPassword, newPassword }
 - **Response**: 200 OK
 - **Description**: Update user password
 
-### 2. Trainee Management (`/api/trainee`)
+### 2. Trainee Management (`/api/v1/trainee`)
 
 #### Register Trainee
-- **Endpoint**: `POST /api/trainee/register`
+- **Endpoint**: `POST /api/v1/trainee/register`
 - **Request**: TraineeRegistrationRequest { firstName, lastName, dateOfBirth?, address? }
 - **Response**: RegistrationResponse { username, password }
 
 #### Get Trainee Profile
-- **Endpoint**: `GET /api/trainee/profile`
-- **Request**: GetProfileRequest { username }
+- **Endpoint**: `GET /api/v1/trainee/profile?username={username}`
+- **Request**: Query parameter `username`
 - **Response**: TraineeProfileResponse
 
 #### Update Trainee Profile
-- **Endpoint**: `PUT /api/trainee/profile`
+- **Endpoint**: `PUT /api/v1/trainee/profile`
 - **Request**: UpdateTraineeProfileRequest
 - **Response**: UpdateTraineeProfileResponse
 
 #### Delete Trainee Profile
-- **Endpoint**: `DELETE /api/trainee/profile`
+- **Endpoint**: `DELETE /api/v1/trainee/profile`
 - **Request**: GetProfileRequest { username }
 - **Response**: 200 OK
 - **Note**: Cascade deletes related trainings
 
 #### Get Not Assigned Trainers
-- **Endpoint**: `GET /api/trainee/trainers/not-assigned`
-- **Request**: GetProfileRequest { username }
+- **Endpoint**: `GET /api/v1/trainee/trainers/not-assigned?username={username}`
+- **Request**: Query parameter `username`
 - **Response**: TrainerListResponse
+- **Note**: Returns only active trainers and validates that trainee is active
 
 #### Update Trainer List
-- **Endpoint**: `PUT /api/trainee/trainers`
+- **Endpoint**: `PUT /api/v1/trainee/trainers`
 - **Request**: UpdateTraineeTrainerListRequest
 - **Response**: TrainerListResponse
+- **Note**: Updates many-to-many relation through owning side to persist join-table changes
 
 #### Get Trainee Trainings
-- **Endpoint**: `GET /api/trainee/trainings`
-- **Request**: GetTraineeTrainingsRequest
+- **Endpoint**: `GET /api/v1/trainee/trainings`
+- **Request**: Query params: `username` (required), `periodFrom`, `periodTo`, `trainerName`, `trainingType`
 - **Response**: TrainingListResponse
 
 #### Activate/Deactivate Trainee
-- **Endpoint**: `PATCH /api/trainee/status`
+- **Endpoint**: `PATCH /api/v1/trainee/status`
 - **Request**: ActivateDeactivateRequest { username, isActive }
 - **Response**: 200 OK
 - **Note**: Non-idempotent operation
 
-### 3. Trainer Management (`/api/trainer`)
+### 3. Trainer Management (`/api/v1/trainer`)
 
 #### Register Trainer
-- **Endpoint**: `POST /api/trainer/register`
+- **Endpoint**: `POST /api/v1/trainer/register`
 - **Request**: TrainerRegistrationRequest { firstName, lastName, specialization }
 - **Response**: RegistrationResponse { username, password }
+- **Note**: `specialization` must exist in `training_type` table
 
 #### Get Trainer Profile
-- **Endpoint**: `GET /api/trainer/profile`
-- **Request**: GetProfileRequest { username }
+- **Endpoint**: `GET /api/v1/trainer/{username}/profile`
+- **Request**: Path variable `username`
 - **Response**: TrainerProfileResponse
 
 #### Update Trainer Profile
-- **Endpoint**: `PUT /api/trainer/profile`
+- **Endpoint**: `PUT /api/v1/trainer/profile`
 - **Request**: UpdateTrainerProfileRequest
 - **Response**: UpdateTrainerProfileResponse
 - **Note**: Specialization is read-only
 
 #### Get Trainer Trainings
-- **Endpoint**: `GET /api/trainer/trainings`
-- **Request**: GetTrainerTrainingsRequest
+- **Endpoint**: `GET /api/v1/trainer/{username}/trainings`
+- **Request**: Path variable `username`; optional query params `periodFrom`, `periodTo`, `traineeName`
 - **Response**: TrainingListResponse
 
 #### Activate/Deactivate Trainer
-- **Endpoint**: `PATCH /api/trainer/status`
-- **Request**: ActivateDeactivateRequest { username, isActive }
+- **Endpoint**: `PATCH /api/v1/trainer/{username}/status?isActive={true|false}`
+- **Request**: Path variable `username`, query parameter `isActive`
 - **Response**: 200 OK
 - **Note**: Non-idempotent operation
 
-### 4. Training Management (`/api/training`)
+### 4. Training Management (`/api/v1/training`)
 
 #### Add Training
-- **Endpoint**: `POST /api/training`
+- **Endpoint**: `POST /api/v1/training`
 - **Request**: AddTrainingRequest
 - **Response**: 200 OK
+- **Validation**:
+  - `trainingDate` must be now/future (small clock-skew tolerance)
+  - `trainingDuration` must be positive and <= 480 minutes
+  - `trainingTypeName` must reference existing `training_type`
 
 #### Get Training Types
-- **Endpoint**: `GET /api/training/types`
+- **Endpoint**: `GET /api/v1/training/types`
 - **Request**: None
 - **Response**: TrainingTypeResponse
+
+### 5. Training Type Management (`/api/v1/training-types`)
+
+#### Add Training Type
+- **Endpoint**: `POST /api/v1/training-types`
+- **Request**: AddTrainingTypeRequest { trainingTypeName }
+- **Response**: TrainingTypeInfo
+- **Note**: Returns 409 if type already exists
 
 ## Key Features Implemented
 
@@ -175,6 +174,8 @@ com.exgym.training/
   - `AlreadyExistsException` → 409
   - `ValidationException` → 400
   - `MethodArgumentNotValidException` → 400
+  - `HttpMessageNotReadableException` → 400
+  - `MethodArgumentTypeMismatchException` → 400
   - Generic exceptions → 500
 - Consistent error response format with transaction ID
 
@@ -200,7 +201,7 @@ com.exgym.training/
 ### 7. **Requirements Compliance**
 - ✅ Username/password auto-generation during registration
 - ✅ No dual trainer/trainee registration possible (separate endpoints)
-- ✅ All endpoints (except registration) check authentication
+- ✅ Authentication endpoints implemented (`/user/login`, `/user/change-password`)
 - ✅ Required validation on all endpoints
 - ✅ Username cannot be changed
 - ✅ Activate/Deactivate is non-idempotent
@@ -208,7 +209,7 @@ com.exgym.training/
 - ✅ Training duration is numeric (int)
 - ✅ Dates use Java Date type
 - ✅ IsActive is Boolean type
-- ✅ Training types are constant (enum)
+- ✅ Training types are table-backed references (`training_type` FK)
 - ✅ No training update/delete endpoints
 - ✅ Error handling implemented
 - ✅ Transaction-level and REST call logging
@@ -228,7 +229,7 @@ Open browser: `http://localhost:8080/swagger-ui.html`
 
 #### Register a Trainee
 ```bash
-curl -X POST "http://localhost:8080/api/trainee/register" \
+curl -X POST "http://localhost:8080/api/v1/trainee/register" \
   -H "Content-Type: application/json" \
   -d '{
     "firstName": "John",
@@ -240,7 +241,7 @@ curl -X POST "http://localhost:8080/api/trainee/register" \
 
 #### Login
 ```bash
-curl -X GET "http://localhost:8080/api/user/login" \
+curl -X POST "http://localhost:8080/api/v1/user/login" \
   -H "Content-Type: application/json" \
   -d '{
     "username": "John.Doe",
@@ -250,7 +251,7 @@ curl -X GET "http://localhost:8080/api/user/login" \
 
 #### Get Training Types
 ```bash
-curl -X GET "http://localhost:8080/api/training/types"
+curl -X GET "http://localhost:8080/api/v1/training/types"
 ```
 
 ### 4. **Transaction ID Tracking**
@@ -299,7 +300,8 @@ mvn spring-boot:run
 2. **Database**: Configure `application.properties` with your database credentials.
 3. **Transaction IDs**: Clients can provide `X-Transaction-Id` header; otherwise auto-generated.
 4. **Date Format**: JSON dates should be in ISO-8601 format (e.g., "2026-01-15").
-5. **Specialization**: While appearing updatable in PUT request, it's ignored (read-only) as per requirements.
+5. **Specialization**: Trainer specialization is a foreign-key reference to `training_type` and is read-only in trainer profile update.
+6. **Default training types**: On startup, `YOGA`, `STRENGTH`, `CARDIO` are auto-seeded when `training_type` is empty.
 
 ## API Documentation Links
 

@@ -1,6 +1,4 @@
-package com.exgym.training.dto.request;
-
-import java.util.Date;
+package com.exgym.training.dto.user.request;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
@@ -10,14 +8,8 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class GetTrainerTrainingsRequest {
+public class GetProfileRequest {
     
     @NotBlank(message = "Username is required")
     private String username;
-    
-    private Date periodFrom;
-    
-    private Date periodTo;
-    
-    private String traineeName;
 }

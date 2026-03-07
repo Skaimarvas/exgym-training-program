@@ -2,8 +2,6 @@ package com.exgym.training.config;
 
 import java.util.UUID;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
@@ -12,11 +10,12 @@ import com.exgym.training.util.TransactionContext;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Component
 public class LoggingInterceptor implements HandlerInterceptor {
 
-    private static final Logger logger = LoggerFactory.getLogger(LoggingInterceptor.class);
     private static final String TRANSACTION_ID_HEADER = "X-Transaction-Id";
     private static final String TRANSACTION_ID_MDC_KEY = "transactionId";
 
@@ -36,7 +35,7 @@ public class LoggingInterceptor implements HandlerInterceptor {
         response.addHeader(TRANSACTION_ID_HEADER, transactionId);
         
         // Log request details
-        logger.info("Incoming request - Method: {}, URI: {}, TransactionId: {}", 
+        log.info("Incoming request - Method: {}, URI: {}, TransactionId: {}", 
                 request.getMethod(), request.getRequestURI(), transactionId);
         
         return true;
@@ -46,7 +45,7 @@ public class LoggingInterceptor implements HandlerInterceptor {
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response, 
                                 Object handler, Exception ex) {
         // Log response details
-        logger.info("Response - Status: {}, TransactionId: {}", 
+        log.info("Response - Status: {}, TransactionId: {}", 
                 response.getStatus(), TransactionContext.getTransactionId());
         
         // Clear context

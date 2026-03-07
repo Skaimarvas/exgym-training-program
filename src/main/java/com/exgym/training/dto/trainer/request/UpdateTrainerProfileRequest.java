@@ -1,11 +1,7 @@
-package com.exgym.training.dto.request;
-
-import java.util.Date;
-
-import org.jspecify.annotations.Nullable;
+package com.exgym.training.dto.trainer.request;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Past;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -13,7 +9,10 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class TraineeRegistrationRequest {
+public class UpdateTrainerProfileRequest {
+    
+    @NotBlank(message = "Username is required")
+    private String username;
     
     @NotBlank(message = "First name is required")
     private String firstName;
@@ -21,10 +20,6 @@ public class TraineeRegistrationRequest {
     @NotBlank(message = "Last name is required")
     private String lastName;
     
-    @Nullable
-    @Past(message = "Date of birth must be in the past")
-    private Date dateOfBirth;
-    
-    @Nullable
-    private String address;
+    @NotNull(message = "Is active status is required")
+    private Boolean isActive;
 }

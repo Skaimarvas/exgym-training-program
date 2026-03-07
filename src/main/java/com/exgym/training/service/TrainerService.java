@@ -1,36 +1,42 @@
 package com.exgym.training.service;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.exgym.training.dao.TrainerDao;
+import com.exgym.training.dao.TrainingTypeDao;
 import com.exgym.training.dao.UserDao;
 import com.exgym.training.entity.Trainer;
+import com.exgym.training.entity.TrainingTypeEntity;
 import com.exgym.training.entity.User;
 import com.exgym.training.exception.ResourceNotFoundException;
 import com.exgym.training.exception.ValidationException;
 import com.exgym.training.util.CredentialsGenerator;
 
 import jakarta.transaction.Transactional;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 public class TrainerService {
 
-    private static final Logger logger = LoggerFactory.getLogger(TrainerService.class);
     private final TrainerDao trainerDao;
+    private final TrainingTypeDao trainingTypeDao;
     private final UserDao userDao;
     private final CredentialsGenerator credentialsGenerator;
     private final UserAuthenticationService authService;
 
     @Autowired
-    public TrainerService(TrainerDao trainerDao, UserDao userDao, CredentialsGenerator credentialsGenerator,
+    public TrainerService(TrainerDao trainerDao, TrainingTypeDao trainingTypeDao, UserDao userDao,
+            CredentialsGenerator credentialsGenerator,
             UserAuthenticationService authService) {
         this.trainerDao = trainerDao;
+        this.trainingTypeDao = trainingTypeDao;
         this.userDao = userDao;
         this.credentialsGenerator = credentialsGenerator;
         this.authService = authService;
@@ -60,6 +66,38 @@ public class TrainerService {
     }
 
     @Transactional
+    public void updateStatus(String userName, Boolean isActive) {
+        log.info("Updating status for trainer: {} to {}", userName, isActive);
+        Trainer trainer = trainerDao.findByUser_UserName(userName)
+                .orElseThrow(() -> new ResourceNotFoundException("Trainer", "username", userName));
+        
+        // Non-idempotent check as per requirement
+        if (trainer.getUser().getIsActive().equals(isActive)) {
+            log.warn("Trainer {} is already in desired state: {}", userName, isActive);
+        }
+        
+        trainer.getUser().setIsActive(isActive);
+        trainerDao.save(trainer);
+        log.info("Status updated successfully for trainer: {}", userName);
+    }
+
+    @Transactional
+    public Trainer updateProfile(String userName, String firstName, String lastName, Boolean isActive) {
+        log.info("Updating profile for trainer: {}", userName);
+        Trainer trainer = trainerDao.findByUser_UserName(userName)
+                .orElseThrow(() -> new ResourceNotFoundException("Trainer", "username", userName));
+        
+        trainer.getUser().setFirstName(firstName);
+        trainer.getUser().setLastName(lastName);
+        trainer.getUser().setIsActive(isActive);
+        // Note: specialization is read-only as per requirements
+        
+        Trainer updatedTrainer = trainerDao.save(trainer);
+        log.info("Profile updated successfully for trainer: {}", userName);
+        return updatedTrainer;
+    }
+
+    @Transactional
     public void deleteByUsername(String userName) {
         Trainer trainer = trainerDao.findByUser_UserName(userName)
                 .orElseThrow(() -> new ResourceNotFoundException("Trainer", "username", userName));
@@ -71,57 +109,84 @@ public class TrainerService {
     }
 
     public Trainer create(String firstName, String lastName, String specialization) {
-        logger.info("Creating trainer profile for {} {}", firstName, lastName);
+        log.info("Creating trainer profile for {} {}", firstName, lastName);
         
+        validateNames(firstName, lastName);
+        validateSpecialization(specialization);
+        
+        TrainingTypeEntity specializationType = findTrainingType(specialization);
+        User user = createUser(firstName, lastName);
+        Trainer trainer = buildTrainer(user, specializationType);
+        
+        validateTrainerFields(trainer);
+        trainerDao.save(trainer);
+        
+        log.info("Trainer created successfully: {}", user.getUserName());
+        return trainer;
+    }
+
+    private void validateNames(String firstName, String lastName) {
         if (firstName == null || firstName.isBlank() || lastName == null || lastName.isBlank()) {
             throw new ValidationException("First name and last name are required");
         }
+    }
+
+    private void validateSpecialization(String specialization) {
         if (specialization == null || specialization.isBlank()) {
             throw new ValidationException("Specialization is required");
         }
-        
-        java.util.Map<Long, User> existingUsers = userDao.findAll().stream()
-            .collect(java.util.stream.Collectors.toMap(User::getId, user -> user));
+    }
+
+    private TrainingTypeEntity findTrainingType(String specialization) {
+        return trainingTypeDao.findByTrainingTypeName(specialization)
+            .orElseGet(() -> trainingTypeDao.findByTrainingTypeName(specialization.trim().toUpperCase())
+                .orElseThrow(() -> new ResourceNotFoundException("TrainingType", "name", specialization)));
+    }
+
+    private User createUser(String firstName, String lastName) {
+        Map<Long, User> existingUsers = userDao.findAll().stream()
+            .collect(Collectors.toMap(User::getId, user -> user));
         String username = credentialsGenerator.generateUsername(firstName, lastName, existingUsers);
         String password = credentialsGenerator.generatePassword();
-        User user = User.builder()
+        
+        return User.builder()
                 .firstName(firstName)
                 .lastName(lastName)
                 .userName(username)
                 .password(password)
                 .isActive(true)
                 .build();
-        Trainer trainer = Trainer.builder()
+    }
+
+    private Trainer buildTrainer(User user, TrainingTypeEntity specializationType) {
+        return Trainer.builder()
                 .user(user)
-                .specialization(specialization)
+                .specialization(specializationType)
                 .build();
-        validateTrainerFields(trainer);
-        trainerDao.save(trainer);
-        logger.info("Trainer created successfully: {}", username);
-        return trainer;
     }
 
     public Trainer update(Trainer trainer) {
-        logger.info("Updating trainer: {}", trainer.getUser().getUserName());
+        log.info("Updating trainer: {}", trainer.getUser().getUserName());
         if (!trainerDao.existsById(trainer.getId())) {
-            logger.error("Trainer not found with id: {}", trainer.getId());
+            log.error("Trainer not found with id: {}", trainer.getId());
             throw new ResourceNotFoundException("Trainer", trainer.getId());
         }
         validateTrainerFields(trainer);
         trainerDao.save(trainer);
-        logger.info("Trainer updated successfully: {}", trainer.getUser().getUserName());
+        log.info("Trainer updated successfully: {}", trainer.getUser().getUserName());
         return trainer;
     }
 
     public Optional<Trainer> select(long trainerId) {
-        logger.debug("Selecting trainer with id: {}", trainerId);
+        log.debug("Selecting trainer with id: {}", trainerId);
         return trainerDao.findById(trainerId);
     }
 
     private void validateTrainerFields(Trainer trainer) {
         if (trainer.getUser() == null || trainer.getUser().getFirstName() == null
                 || trainer.getUser().getLastName() == null || trainer.getUser().getUserName() == null
-                || trainer.getUser().getPassword() == null || trainer.getSpecialization() == null) {
+                || trainer.getUser().getPassword() == null || trainer.getSpecialization() == null
+                || trainer.getSpecialization().getTrainingTypeName() == null) {
             throw new ValidationException("Missing required trainer fields");
         }
     }

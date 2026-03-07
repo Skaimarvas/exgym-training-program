@@ -1,4 +1,4 @@
-package com.exgym.training.dto.response;
+package com.exgym.training.dto.training.response;
 
 import java.util.List;
 

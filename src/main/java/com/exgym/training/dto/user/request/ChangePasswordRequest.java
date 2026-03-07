@@ -1,7 +1,6 @@
-package com.exgym.training.dto.request;
+package com.exgym.training.dto.user.request;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -9,11 +8,14 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class ActivateDeactivateRequest {
+public class ChangePasswordRequest {
     
     @NotBlank(message = "Username is required")
     private String username;
     
-    @NotNull(message = "Is active status is required")
-    private Boolean isActive;
+    @NotBlank(message = "Old password is required")
+    private String oldPassword;
+    
+    @NotBlank(message = "New password is required")
+    private String newPassword;
 }

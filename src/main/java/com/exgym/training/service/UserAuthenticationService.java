@@ -13,20 +13,21 @@ import com.exgym.training.exception.ResourceNotFoundException;
 public class UserAuthenticationService {
 
     public <T> boolean authenticate(Optional<T> entityOpt, Function<T, User> userExtractor, String password) {
-        return entityOpt.isPresent() && entityOpt.get() != null
-                && userExtractor.apply(entityOpt.get()).getPassword().equals(password);
+        return entityOpt
+                .map(userExtractor)
+                .map(User::getPassword)
+                .filter(pwd -> pwd.equals(password))
+                .isPresent();
     }
 
     public <T> void changePassword(Optional<T> entityOpt, Function<T, User> userExtractor,
             String oldPassword, String newPassword, String entityType) {
-        if (entityOpt.isEmpty())
-            throw new ResourceNotFoundException(entityType + " not found");
-
-        T entity = entityOpt.get();
+        T entity = entityOpt.orElseThrow(() -> new ResourceNotFoundException(entityType + " not found"));
         User user = userExtractor.apply(entity);
 
-        if (!user.getPassword().equals(oldPassword))
+        if (!user.getPassword().equals(oldPassword)) {
             throw new InvalidCredentialsException("Old password does not match");
+        }
 
         user.setPassword(newPassword);
     }
@@ -38,3 +39,4 @@ public class UserAuthenticationService {
         user.setIsActive(!Boolean.TRUE.equals(user.getIsActive()));
     }
 }
+

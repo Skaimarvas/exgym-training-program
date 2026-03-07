@@ -1,4 +1,4 @@
-package com.exgym.training.dto.response;
+package com.exgym.training.dto.trainer.response;
 
 import java.util.List;
 
@@ -9,16 +9,19 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class TrainerListResponse {
-    private List<TrainerInfo> trainers;
+public class TrainerProfileResponse {
+    private String firstName;
+    private String lastName;
+    private String specialization;
+    private Boolean isActive;
+    private List<TraineeSummary> trainees;
     
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class TrainerInfo {
+    public static class TraineeSummary {
         private String username;
         private String firstName;
         private String lastName;
-        private String specialization;
     }
 }

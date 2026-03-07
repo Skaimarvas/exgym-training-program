@@ -1,6 +1,5 @@
-package com.exgym.training.dto.response;
+package com.exgym.training.dto.trainer.response;
 
-import java.util.Date;
 import java.util.List;
 
 import lombok.AllArgsConstructor;
@@ -10,18 +9,13 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class TraineeProfileResponse {
-    private String firstName;
-    private String lastName;
-    private Date dateOfBirth;
-    private String address;
-    private Boolean isActive;
-    private List<TrainerSummary> trainers;
+public class TrainerListResponse {
+    private List<TrainerInfo> trainers;
     
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class TrainerSummary {
+    public static class TrainerInfo {
         private String username;
         private String firstName;
         private String lastName;

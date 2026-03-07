@@ -24,8 +24,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.exgym.training.dao.TrainerDao;
+import com.exgym.training.dao.TrainingTypeDao;
 import com.exgym.training.dao.UserDao;
 import com.exgym.training.entity.Trainer;
+import com.exgym.training.entity.TrainingTypeEntity;
 import com.exgym.training.entity.User;
 import com.exgym.training.exception.InvalidCredentialsException;
 import com.exgym.training.exception.ResourceNotFoundException;
@@ -36,6 +38,9 @@ class TrainerServiceTest {
 
     @Mock
     private TrainerDao trainerDao;
+
+    @Mock
+    private TrainingTypeDao trainingTypeDao;
 
     @Mock
     private UserDao userDao;
@@ -52,7 +57,8 @@ class TrainerServiceTest {
     @BeforeEach
     void setUp() {
         authService = new UserAuthenticationService();
-        trainerService = new TrainerService(trainerDao, userDao, credentialsGenerator, authService);
+        trainerService = new TrainerService(trainerDao, trainingTypeDao, userDao, credentialsGenerator, authService);
+        TrainingTypeEntity yogaType = new TrainingTypeEntity(1L, "YOGA");
         User user = User.builder()
                 .firstName("Jane")
                 .lastName("Smith")
@@ -62,10 +68,12 @@ class TrainerServiceTest {
         testTrainer = Trainer.builder()
                 .id(1L)
                 .user(user)
-                .specialization("Yoga")
+            .specialization(yogaType)
                 .build();
 
         lenient().when(userDao.findAll()).thenReturn(new ArrayList<>());
+        lenient().when(trainingTypeDao.findByTrainingTypeName("Yoga")).thenReturn(Optional.empty());
+        lenient().when(trainingTypeDao.findByTrainingTypeName("YOGA")).thenReturn(Optional.of(yogaType));
         lenient().when(credentialsGenerator.generateUsername(any(), any(), any()))
                 .thenReturn("Jane.Smith");
         lenient().when(credentialsGenerator.generatePassword())

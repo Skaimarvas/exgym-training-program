@@ -1,4 +1,4 @@
-package com.exgym.training.dto.response;
+package com.exgym.training.dto.trainer.response;
 
 import java.util.List;
 
@@ -9,7 +9,8 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class TrainerProfileResponse {
+public class UpdateTrainerProfileResponse {
+    private String username;
     private String firstName;
     private String lastName;
     private String specialization;

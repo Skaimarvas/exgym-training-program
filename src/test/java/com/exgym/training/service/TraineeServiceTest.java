@@ -26,8 +26,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.exgym.training.dao.TraineeDao;
+import com.exgym.training.dao.TrainerDao;
 import com.exgym.training.dao.UserDao;
 import com.exgym.training.entity.Trainee;
+import com.exgym.training.entity.Trainer;
 import com.exgym.training.entity.User;
 import com.exgym.training.exception.InvalidCredentialsException;
 import com.exgym.training.exception.ResourceNotFoundException;
@@ -44,6 +46,9 @@ class TraineeServiceTest {
     private UserDao userDao;
 
     @Mock
+    private TrainerDao trainerDao;
+
+    @Mock
     private CredentialsGenerator credentialsGenerator;
 
     private UserAuthenticationService authService;
@@ -55,7 +60,7 @@ class TraineeServiceTest {
     @BeforeEach
     void setUp() {
         authService = new UserAuthenticationService();
-        traineeService = new TraineeService(traineeDao, userDao, credentialsGenerator, authService);
+        traineeService = new TraineeService(traineeDao, trainerDao, userDao, credentialsGenerator, authService);
         testTrainee = TestDataLoader.loadTrainees().get(0);
         lenient().when(userDao.findAll()).thenReturn(new ArrayList<>());
         lenient().when(credentialsGenerator.generateUsername(any(), any(), any()))
@@ -293,24 +298,33 @@ class TraineeServiceTest {
 
     @Test
     void testUpdateTrainersList() {
+        Trainer trainerOne = TestDataLoader.loadTrainers().get(0);
+        trainerOne.setTrainees(new java.util.HashSet<>());
+        Trainer trainerTwo = TestDataLoader.loadTrainers().get(1);
+        trainerTwo.setTrainees(new java.util.HashSet<>());
+
         when(traineeDao.findByUser_UserName("John.Doe")).thenReturn(Optional.of(testTrainee));
+        when(trainerDao.save(any(Trainer.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(traineeDao.save(any(Trainee.class))).thenReturn(testTrainee);
 
-        Trainee result = traineeService.updateTrainersList("John.Doe", java.util.Set.of(1L, 2L));
+        Trainee result = traineeService.updateTrainersList("John.Doe", java.util.Set.of(trainerOne, trainerTwo));
 
         assertNotNull(result);
         verify(traineeDao, times(1)).findByUser_UserName("John.Doe");
+        verify(trainerDao, times(2)).save(any(Trainer.class));
         verify(traineeDao, times(1)).save(testTrainee);
     }
 
     @Test
     void testUpdateTrainersList_UserNotFound() {
+        Trainer trainer = TestDataLoader.loadTrainers().get(0);
         when(traineeDao.findByUser_UserName("John.Doe")).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class,
-                () -> traineeService.updateTrainersList("John.Doe", Set.of(1L, 2L)));
+            () -> traineeService.updateTrainersList("John.Doe", Set.of(trainer)));
 
         verify(traineeDao, times(1)).findByUser_UserName("John.Doe");
+        verify(trainerDao, never()).save(any(Trainer.class));
         verify(traineeDao, never()).save(any(Trainee.class));
     }
 }

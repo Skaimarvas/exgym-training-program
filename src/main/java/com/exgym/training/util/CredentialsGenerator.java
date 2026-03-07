@@ -4,22 +4,22 @@ import java.security.SecureRandom;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import com.exgym.training.entity.User;
 
+import lombok.extern.slf4j.Slf4j;
+
+@Slf4j
 @Component
 public class CredentialsGenerator {
 
-    private static final Logger logger = LoggerFactory.getLogger(CredentialsGenerator.class);
     private static final String CHARACTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
     private static final int PASSWORD_LENGTH = 10;
     private final SecureRandom random = new SecureRandom();
 
     public String generateUsername(String firstName, String lastName, Map<Long, ? extends User> existingUsers) {
-        logger.debug("Generating username for {} {}", firstName, lastName);
+        log.debug("Generating username for {} {}", firstName, lastName);
 
         String baseUsername = firstName + "." + lastName;
         String username = baseUsername;
@@ -33,7 +33,7 @@ public class CredentialsGenerator {
             serial++;
         }
 
-        logger.debug("Generated username: {}", username);
+        log.debug("Generated username: {}", username);
         return username;
     }
 
@@ -44,7 +44,7 @@ public class CredentialsGenerator {
             password.append(CHARACTERS.charAt(index));
         }
         String generatedPassword = password.toString();
-        logger.debug("Generated password of length: {}", generatedPassword.length());
+        log.debug("Generated password of length: {}", generatedPassword.length());
         return generatedPassword;
     }
 

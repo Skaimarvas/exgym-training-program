@@ -1,4 +1,4 @@
-package com.exgym.training.dto.response;
+package com.exgym.training.dto.trainee.response;
 
 import java.util.Date;
 import java.util.List;
@@ -10,8 +10,7 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class UpdateTraineeProfileResponse {
-    private String username;
+public class TraineeProfileResponse {
     private String firstName;
     private String lastName;
     private Date dateOfBirth;

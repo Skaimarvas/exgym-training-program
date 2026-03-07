@@ -1,4 +1,6 @@
-package com.exgym.training.dto.request;
+package com.exgym.training.dto.trainee.request;
+
+import java.util.Date;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
@@ -8,14 +10,16 @@ import lombok.NoArgsConstructor;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class ChangePasswordRequest {
+public class GetTraineeTrainingsRequest {
     
     @NotBlank(message = "Username is required")
     private String username;
     
-    @NotBlank(message = "Old password is required")
-    private String oldPassword;
+    private Date periodFrom;
     
-    @NotBlank(message = "New password is required")
-    private String newPassword;
+    private Date periodTo;
+    
+    private String trainerName;
+    
+    private String trainingTypeName;
 }

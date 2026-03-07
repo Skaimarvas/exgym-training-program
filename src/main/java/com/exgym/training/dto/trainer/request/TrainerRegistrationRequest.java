@@ -1,4 +1,4 @@
-package com.exgym.training.dto.request;
+package com.exgym.training.dto.trainer.request;
 
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;

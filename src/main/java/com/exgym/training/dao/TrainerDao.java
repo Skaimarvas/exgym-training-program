@@ -14,6 +14,6 @@ public interface TrainerDao extends JpaRepository<Trainer, Long> {
 
 	Optional<Trainer> findByUser_UserName(String userName);
 	
-	@Query("SELECT t FROM Trainer t WHERE t.id NOT IN (SELECT tr.id FROM Trainee trn JOIN trn.trainers tr WHERE trn.user.userName = :traineeUserName)")
+	@Query("SELECT t FROM Trainer t WHERE t.user.isActive <> false AND t.id NOT IN (SELECT tr.id FROM Trainee trn JOIN trn.trainers tr WHERE trn.user.userName = :traineeUserName)")
 	List<Trainer> findNotAssignedToTrainee(String traineeUserName);
 }
