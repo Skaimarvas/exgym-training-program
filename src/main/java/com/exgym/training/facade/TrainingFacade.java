@@ -1,13 +1,19 @@
 package com.exgym.training.facade;
 
 import java.util.Date;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
+import com.exgym.training.dao.TrainingTypeDao;
+import com.exgym.training.dto.training.request.AddTrainingRequest;
+import com.exgym.training.dto.training.response.TrainingTypeResponse;
 import com.exgym.training.entity.Trainee;
 import com.exgym.training.entity.Trainer;
 import com.exgym.training.entity.Training;
+import com.exgym.training.exception.ResourceNotFoundException;
 import com.exgym.training.service.TraineeService;
 import com.exgym.training.service.TrainerService;
 import com.exgym.training.service.TrainingService;
@@ -21,14 +27,43 @@ public class TrainingFacade {
     private final TraineeService traineeService;
     private final TrainerService trainerService;
     private final TrainingService trainingService;
+    private final TrainingTypeDao trainingTypeDao;
 
     public TrainingFacade(TraineeService traineeService,
-            TrainerService trainerService,
-            TrainingService trainingService) {
-        this.traineeService = traineeService;
-        this.trainerService = trainerService;
-        this.trainingService = trainingService;
-        log.info("TrainingFacade initialized with all services");
+        TrainerService trainerService,
+        TrainingService trainingService,
+        TrainingTypeDao trainingTypeDao) {
+    this.traineeService = traineeService;
+    this.trainerService = trainerService;
+    this.trainingService = trainingService;
+    this.trainingTypeDao = trainingTypeDao;
+    log.info("TrainingFacade initialized with all services");
+    }
+
+    public void addTraining(AddTrainingRequest request) {
+    Trainee trainee = traineeService.selectByUsername(request.getTraineeUsername())
+        .orElseThrow(() -> new ResourceNotFoundException("Trainee", "username", request.getTraineeUsername()));
+
+    Trainer trainer = trainerService.selectByUsername(request.getTrainerUsername())
+        .orElseThrow(() -> new ResourceNotFoundException("Trainer", "username", request.getTrainerUsername()));
+
+    trainingService.create(
+        trainer,
+        trainee,
+        request.getTrainingName(),
+        request.getTrainingTypeName(),
+        request.getTrainingDate(),
+        request.getTrainingDuration());
+    }
+
+    public TrainingTypeResponse getTrainingTypes() {
+    List<TrainingTypeResponse.TrainingTypeInfo> trainingTypes = trainingTypeDao.findAll().stream()
+        .map(type -> new TrainingTypeResponse.TrainingTypeInfo(
+            type.getTrainingTypeName(),
+            type.getId().intValue()))
+        .collect(Collectors.toList());
+
+    return new TrainingTypeResponse(trainingTypes);
     }
 
     public Trainee createTrainee(String firstName, String lastName, String address, Date dateOfBirth) {

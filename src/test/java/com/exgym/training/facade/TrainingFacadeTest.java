@@ -5,6 +5,9 @@ import com.exgym.training.entity.Trainer;
 import com.exgym.training.entity.Training;
 import com.exgym.training.entity.TrainingTypeEntity;
 import com.exgym.training.entity.User;
+import com.exgym.training.dao.TrainingTypeDao;
+import com.exgym.training.dto.training.request.AddTrainingRequest;
+import com.exgym.training.dto.training.response.TrainingTypeResponse;
 import com.exgym.training.service.TraineeService;
 import com.exgym.training.service.TrainerService;
 import com.exgym.training.service.TrainingService;
@@ -22,6 +25,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 import org.junit.jupiter.api.extension.ExtendWith;
+import java.util.List;
 
 @ExtendWith(MockitoExtension.class)
 class TrainingFacadeTest {
@@ -31,6 +35,8 @@ class TrainingFacadeTest {
     private TrainerService trainerService;
     @Mock
     private TrainingService trainingService;
+    @Mock
+    private TrainingTypeDao trainingTypeDao;
 
     @InjectMocks
     private TrainingFacade trainingFacade;
@@ -144,5 +150,44 @@ class TrainingFacadeTest {
         assertTrue(result.isPresent());
         assertEquals("Morning Yoga", result.get().getTrainingName());
         verify(trainingService).select(3L);
+    }
+
+    @Test
+    void testAddTraining() {
+        AddTrainingRequest request = new AddTrainingRequest(
+                "John.Doe",
+                "Jane.Smith",
+                "Morning Yoga",
+                "YOGA",
+                new Date(),
+                60);
+        when(traineeService.selectByUsername("John.Doe")).thenReturn(Optional.of(trainee));
+        when(trainerService.selectByUsername("Jane.Smith")).thenReturn(Optional.of(trainer));
+
+        trainingFacade.addTraining(request);
+
+        verify(traineeService).selectByUsername("John.Doe");
+        verify(trainerService).selectByUsername("Jane.Smith");
+        verify(trainingService).create(
+                eq(trainer),
+                eq(trainee),
+                eq("Morning Yoga"),
+                eq("YOGA"),
+                any(Date.class),
+                eq(60));
+    }
+
+    @Test
+    void testGetTrainingTypes() {
+        when(trainingTypeDao.findAll()).thenReturn(List.of(
+                new TrainingTypeEntity(1L, "YOGA"),
+                new TrainingTypeEntity(2L, "CARDIO")));
+
+        TrainingTypeResponse response = trainingFacade.getTrainingTypes();
+
+        assertNotNull(response);
+        assertEquals(2, response.getTrainingTypes().size());
+        assertEquals("YOGA", response.getTrainingTypes().get(0).getTrainingType());
+        verify(trainingTypeDao).findAll();
     }
 }

@@ -29,40 +29,22 @@ public class TrainerService {
     private final TrainingTypeDao trainingTypeDao;
     private final UserDao userDao;
     private final CredentialsGenerator credentialsGenerator;
-    private final UserAuthenticationService authService;
 
     @Autowired
     public TrainerService(TrainerDao trainerDao, TrainingTypeDao trainingTypeDao, UserDao userDao,
-            CredentialsGenerator credentialsGenerator,
-            UserAuthenticationService authService) {
+            CredentialsGenerator credentialsGenerator) {
         this.trainerDao = trainerDao;
         this.trainingTypeDao = trainingTypeDao;
         this.userDao = userDao;
         this.credentialsGenerator = credentialsGenerator;
-        this.authService = authService;
     }
 
     public Optional<Trainer> selectByUsername(String userName) {
         return trainerDao.findByUser_UserName(userName);
     }
 
-    public boolean authenticate(String userName, String password) {
-        Optional<Trainer> trainerOpt = trainerDao.findByUser_UserName(userName);
-        return authService.authenticate(trainerOpt, Trainer::getUser, password);
-    }
-
-    public Trainer changePassword(String userName, String oldPassword, String newPassword) {
-        Optional<Trainer> trainerOpt = trainerDao.findByUser_UserName(userName);
-        authService.changePassword(trainerOpt, Trainer::getUser, oldPassword, newPassword, "Trainer");
-        return trainerDao.save(trainerOpt.get());
-    }
-
-    @Transactional
-    public Trainer toggleActivation(String userName) {
-        Trainer trainer = trainerDao.findByUser_UserName(userName)
-                .orElseThrow(() -> new ResourceNotFoundException("Trainer", "username", userName));
-        trainer.getUser().setIsActive(!Boolean.TRUE.equals(trainer.getUser().getIsActive()));
-        return trainerDao.save(trainer);
+    public Optional<Trainer> selectProfileByUsername(String userName) {
+        return trainerDao.findProfileByUser_UserName(userName);
     }
 
     @Transactional
@@ -92,7 +74,9 @@ public class TrainerService {
         trainer.getUser().setIsActive(isActive);
         // Note: specialization is read-only as per requirements
         
-        Trainer updatedTrainer = trainerDao.save(trainer);
+        trainerDao.save(trainer);
+        Trainer updatedTrainer = trainerDao.findProfileByUser_UserName(userName)
+            .orElseThrow(() -> new ResourceNotFoundException("Trainer", "username", userName));
         log.info("Profile updated successfully for trainer: {}", userName);
         return updatedTrainer;
     }

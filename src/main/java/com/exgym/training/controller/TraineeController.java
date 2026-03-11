@@ -3,6 +3,7 @@ package com.exgym.training.controller;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.HashSet;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -97,7 +98,7 @@ public class TraineeController {
     public ResponseEntity<TraineeProfileResponse> getTraineeProfile(@RequestParam String username) {
         log.debug("Fetching profile for trainee: {}", username);
         
-        Trainee trainee = traineeService.selectByUsername(username)
+        Trainee trainee = traineeService.selectProfileByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("Trainee", "username", username));
         
         TraineeProfileResponse response = convertToProfileResponse(trainee);
@@ -182,14 +183,11 @@ public class TraineeController {
             @Valid @RequestBody UpdateTraineeTrainerListRequest request) {
         log.debug("Updating trainer list for trainee: {}", request.getTraineeUsername());
 
-        Set<Trainer> trainers = request.getTrainerUsernames().stream()
-                .map(username -> trainerService.selectByUsername(username)
-                        .orElseThrow(() -> new ResourceNotFoundException("Trainer", "username", username)))
-                .collect(Collectors.toSet());
-
-        traineeService.updateTrainersList(request.getTraineeUsername(), trainers);
+        Trainee updatedTrainee = traineeService.updateTrainersList(
+            request.getTraineeUsername(),
+            new HashSet<>(request.getTrainerUsernames()));
         
-        List<TrainerListResponse.TrainerInfo> trainerInfos = trainers.stream()
+        List<TrainerListResponse.TrainerInfo> trainerInfos = safeTrainerSet(updatedTrainee).stream()
                 .map(trainer -> new TrainerListResponse.TrainerInfo(
                     trainer.getUser().getUserName(),
                     trainer.getUser().getFirstName(),
@@ -217,6 +215,9 @@ public class TraineeController {
             @RequestParam(required = false) String trainerName,
             @RequestParam(required = false) String trainingType) {
         log.debug("Fetching trainings for trainee: {}", username);
+
+        traineeService.selectByUsername(username)
+            .orElseThrow(() -> new ResourceNotFoundException("Trainee", "username", username));
         
         GetTraineeTrainingsRequest request = new GetTraineeTrainingsRequest(
             username,

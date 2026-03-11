@@ -84,7 +84,7 @@ public class TrainerController {
     public ResponseEntity<TrainerProfileResponse> getTrainerProfile(@PathVariable String username) {
         log.debug("Fetching profile for trainer: {}", username);
 
-        Trainer trainer = trainerService.selectByUsername(username)
+                Trainer trainer = trainerService.selectProfileByUsername(username)
                 .orElseThrow(() -> new ResourceNotFoundException("Trainer", "username", username));
 
         TrainerProfileResponse response = convertToProfileResponse(trainer);
@@ -125,6 +125,9 @@ public class TrainerController {
             @RequestParam(required = false) Date periodTo,
             @RequestParam(required = false) String traineeName) {
         log.debug("Fetching trainings for trainer: {}", username);
+
+        trainerService.selectByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("Trainer", "username", username));
 
         GetTrainerTrainingsRequest request = new GetTrainerTrainingsRequest(
                 username,

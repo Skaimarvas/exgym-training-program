@@ -1,12 +1,14 @@
 package com.exgym.training.dto.trainee.request;
 
 import java.util.Date;
+import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Past;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -34,4 +36,7 @@ public class UpdateTraineeProfileRequest {
     
     @NotNull(message = "Is active status is required")
     private Boolean isActive;
+
+    @Size(max = 0, message = "Trainers list must be empty for profile update")
+    private List<String> trainers;
 }

@@ -1,8 +1,5 @@
 package com.exgym.training.controller;
 
-import java.util.List;
-import java.util.stream.Collectors;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -11,15 +8,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.exgym.training.dao.TrainingTypeDao;
 import com.exgym.training.dto.training.request.AddTrainingRequest;
 import com.exgym.training.dto.training.response.TrainingTypeResponse;
-import com.exgym.training.entity.Trainee;
-import com.exgym.training.entity.Trainer;
-import com.exgym.training.exception.ResourceNotFoundException;
-import com.exgym.training.service.TraineeService;
-import com.exgym.training.service.TrainerService;
-import com.exgym.training.service.TrainingService;
+import com.exgym.training.facade.TrainingFacade;
 
 import io.swagger.v3.oas.annotations. Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -34,18 +25,11 @@ import lombok.extern.slf4j.Slf4j;
 @Tag(name = "Training Management", description = "Endpoints for managing trainings and training types")
 public class TrainingController {
 
-    private final TrainingService trainingService;
-    private final TraineeService traineeService;
-    private final TrainerService trainerService;
-    private final TrainingTypeDao trainingTypeDao;
+    private final TrainingFacade trainingFacade;
 
     @Autowired
-    public TrainingController(TrainingService trainingService, TraineeService traineeService, 
-                             TrainerService trainerService, TrainingTypeDao trainingTypeDao) {
-        this.trainingService = trainingService;
-        this.traineeService = traineeService;
-        this.trainerService = trainerService;
-        this.trainingTypeDao = trainingTypeDao;
+    public TrainingController(TrainingFacade trainingFacade) {
+        this.trainingFacade = trainingFacade;
     }
 
     @Operation(summary = "Add training", description = "Create a new training session")
@@ -58,21 +42,7 @@ public class TrainingController {
     public ResponseEntity<Void> addTraining(@Valid @RequestBody AddTrainingRequest request) {
         log.debug("Adding new training: {} for trainee: {} and trainer: {}", 
             request.getTrainingName(), request.getTraineeUsername(), request.getTrainerUsername());
-        
-        Trainee trainee = traineeService.selectByUsername(request.getTraineeUsername())
-                .orElseThrow(() -> new ResourceNotFoundException("Trainee", "username", request.getTraineeUsername()));
-        
-        Trainer trainer = trainerService.selectByUsername(request.getTrainerUsername())
-                .orElseThrow(() -> new ResourceNotFoundException("Trainer", "username", request.getTrainerUsername()));
-        
-        trainingService.create(
-            trainer,
-            trainee,
-            request.getTrainingName(),
-            request.getTrainingTypeName(),
-            request.getTrainingDate(),
-            request.getTrainingDuration()
-        );
+        trainingFacade.addTraining(request);
         
         log.info("Training added successfully: {}", request.getTrainingName());
         return ResponseEntity.ok().build();
@@ -85,15 +55,7 @@ public class TrainingController {
     @GetMapping("/types")
     public ResponseEntity<TrainingTypeResponse> getTrainingTypes() {
         log.debug("Fetching all training types");
-        
-        List<TrainingTypeResponse.TrainingTypeInfo> trainingTypes = trainingTypeDao.findAll().stream()
-                .map(type -> new TrainingTypeResponse.TrainingTypeInfo(
-                    type.getTrainingTypeName(),
-                    type.getId().intValue()
-                ))
-                .collect(Collectors.toList());
-        
-        TrainingTypeResponse response = new TrainingTypeResponse(trainingTypes);
+        TrainingTypeResponse response = trainingFacade.getTrainingTypes();
         return ResponseEntity.ok(response);
     }
 }

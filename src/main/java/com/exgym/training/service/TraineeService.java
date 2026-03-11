@@ -2,6 +2,7 @@ package com.exgym.training.service;
 
 import java.util.Date;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -31,38 +32,22 @@ public class TraineeService {
     private final TrainerDao trainerDao;
     private final UserDao userDao;
     private final CredentialsGenerator credentialsGenerator;
-    private final UserAuthenticationService authService;
 
     @Autowired
     public TraineeService(TraineeDao traineeDao, TrainerDao trainerDao, UserDao userDao,
-            CredentialsGenerator credentialsGenerator, UserAuthenticationService authService) {
+            CredentialsGenerator credentialsGenerator) {
         this.traineeDao = traineeDao;
         this.trainerDao = trainerDao;
         this.userDao = userDao;
         this.credentialsGenerator = credentialsGenerator;
-        this.authService = authService;
     }
 
     public Optional<Trainee> selectByUsername(String userName) {
         return traineeDao.findByUser_UserName(userName);
     }
 
-    public boolean authenticate(String userName, String password) {
-        Optional<Trainee> traineeOpt = traineeDao.findByUser_UserName(userName);
-        return authService.authenticate(traineeOpt, Trainee::getUser, password);
-    }
-
-    public Trainee changePassword(String userName, String oldPassword, String newPassword) {
-        Optional<Trainee> traineeOpt = traineeDao.findByUser_UserName(userName);
-        authService.changePassword(traineeOpt, Trainee::getUser, oldPassword, newPassword, "Trainee");
-        return traineeDao.save(traineeOpt.get());
-    }
-
-    @Transactional
-    public Trainee toggleActivation(String userName) {
-        Optional<Trainee> traineeOpt = traineeDao.findByUser_UserName(userName);
-        authService.toggleActivation(traineeOpt, Trainee::getUser, "Trainee");
-        return traineeDao.save(traineeOpt.get());
+    public Optional<Trainee> selectProfileByUsername(String userName) {
+        return traineeDao.findProfileByUser_UserName(userName);
     }
 
     @Transactional
@@ -94,7 +79,9 @@ public class TraineeService {
         trainee.setAddress(address);
         trainee.getUser().setIsActive(isActive);
         
-        Trainee updatedTrainee = traineeDao.save(trainee);
+        traineeDao.save(trainee);
+        Trainee updatedTrainee = traineeDao.findProfileByUser_UserName(userName)
+            .orElseThrow(() -> new ResourceNotFoundException("Trainee", "username", userName));
         log.info("Profile updated successfully for trainee: {}", userName);
         return updatedTrainee;
     }
@@ -187,14 +174,29 @@ public class TraineeService {
     }
 
     @Transactional
-    public Trainee updateTrainersList(String traineeUserName, Set<Trainer> requestedTrainers) {
+        public Trainee updateTrainersList(String traineeUserName, Set<String> requestedTrainerUsernames) {
         Trainee trainee = traineeDao.findByUser_UserName(traineeUserName)
                 .orElseThrow(() -> new ResourceNotFoundException("Trainee", "username", traineeUserName));
+
+        List<Trainer> managedRequestedTrainers = trainerDao.findAllByUser_UserNameIn(requestedTrainerUsernames);
+        if (managedRequestedTrainers.size() != requestedTrainerUsernames.size()) {
+            Set<String> foundUsernames = managedRequestedTrainers.stream()
+                .map(trainer -> trainer.getUser().getUserName())
+                .collect(Collectors.toSet());
+
+            String missingUsername = requestedTrainerUsernames.stream()
+                .filter(username -> !foundUsernames.contains(username))
+                .findFirst()
+                .orElse("unknown");
+
+            throw new ResourceNotFoundException("Trainer", "username", missingUsername);
+        }
 
         Set<Trainer> existingTrainers = trainee.getTrainers() == null
                 ? new HashSet<>()
                 : new HashSet<>(trainee.getTrainers());
 
+        Set<Trainer> requestedTrainers = new HashSet<>(managedRequestedTrainers);
         Set<Long> requestedTrainerIds = requestedTrainers.stream()
                 .map(Trainer::getId)
                 .collect(Collectors.toSet());
@@ -219,7 +221,9 @@ public class TraineeService {
         }
 
         trainee.setTrainers(requestedTrainers);
-        return traineeDao.save(trainee);
+        traineeDao.save(trainee);
+        return traineeDao.findProfileByUser_UserName(traineeUserName)
+                .orElseThrow(() -> new ResourceNotFoundException("Trainee", "username", traineeUserName));
     }
 
     private void validateTraineeFields(Trainee trainee) {

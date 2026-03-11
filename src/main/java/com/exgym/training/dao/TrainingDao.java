@@ -4,6 +4,7 @@ import com.exgym.training.dto.trainee.request.GetTraineeTrainingsRequest;
 import com.exgym.training.dto.trainer.request.GetTrainerTrainingsRequest;
 import com.exgym.training.entity.Training;
 
+import java.util.Date;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -26,4 +27,8 @@ public interface TrainingDao extends JpaRepository<Training, Long> {
 			+ " AND (:#{#request.periodTo} IS NULL OR t.trainingDate <= :#{#request.periodTo})"
 			+ " AND (:#{#request.traineeName} IS NULL OR t.trainee.user.userName = :#{#request.traineeName})")
 	List<Training> findTrainerTrainings(@Param("request") GetTrainerTrainingsRequest request);
+
+	boolean existsByTrainer_IdAndTrainingDate(Long trainerId, Date trainingDate);
+
+	boolean existsByTrainee_IdAndTrainingDate(Long traineeId, Date trainingDate);
 }

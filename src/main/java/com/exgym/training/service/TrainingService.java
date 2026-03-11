@@ -6,6 +6,7 @@ import java.util.Optional;
 
 import org.springframework.stereotype.Service;
 
+import com.exgym.training.dao.TraineeDao;
 import com.exgym.training.dao.TrainingDao;
 import com.exgym.training.dao.TrainingTypeDao;
 import com.exgym.training.dto.trainee.request.GetTraineeTrainingsRequest;
@@ -27,10 +28,12 @@ public class TrainingService {
 
     private final TrainingDao trainingDao;
     private final TrainingTypeDao trainingTypeDao;
+    private final TraineeDao traineeDao;
 
-    public TrainingService(TrainingDao trainingDao, TrainingTypeDao trainingTypeDao) {
+    public TrainingService(TrainingDao trainingDao, TrainingTypeDao trainingTypeDao, TraineeDao traineeDao) {
         this.trainingDao = trainingDao;
         this.trainingTypeDao = trainingTypeDao;
+        this.traineeDao = traineeDao;
     }
 
     public List<Training> getTraineeTrainings(GetTraineeTrainingsRequest request) {
@@ -83,6 +86,21 @@ public class TrainingService {
         }
         if (trainingDuration > MAX_TRAINING_DURATION_MINUTES) {
             throw new ValidationException("Training duration must not exceed " + MAX_TRAINING_DURATION_MINUTES + " minutes");
+        }
+
+        boolean assignmentExists = traineeDao.existsTrainerAssignment(
+                trainee.getUser().getUserName(),
+                trainer.getUser().getUserName());
+        if (!assignmentExists) {
+            throw new ValidationException("Trainer is not assigned to trainee");
+        }
+
+        if (trainingDao.existsByTrainer_IdAndTrainingDate(trainer.getId(), trainingDate)) {
+            throw new ValidationException("Trainer already has a training at the specified time");
+        }
+
+        if (trainingDao.existsByTrainee_IdAndTrainingDate(trainee.getId(), trainingDate)) {
+            throw new ValidationException("Trainee already has a training at the specified time");
         }
     }
 
