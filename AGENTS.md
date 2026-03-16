@@ -44,29 +44,32 @@ exgym-training-program/
 
 #### 2. **controller/** - REST API Endpoints
 - `TraineeController.java` - Trainee management endpoints
-  - POST /api/trainee/register
-  - GET /api/trainee/profile
-  - PUT /api/trainee/profile
-  - DELETE /api/trainee/profile
-  - GET /api/trainee/trainers/not-assigned
-  - PUT /api/trainee/trainers
-  - GET /api/trainee/trainings
-  - PATCH /api/trainee/status
+  - POST /api/v1/trainee/register
+  - GET /api/v1/trainee/profile
+  - PUT /api/v1/trainee/profile
+  - DELETE /api/v1/trainee/profile
+  - GET /api/v1/trainee/trainers/not-assigned
+  - PUT /api/v1/trainee/trainers
+  - GET /api/v1/trainee/trainings
+  - PATCH /api/v1/trainee/status
 
 - `TrainerController.java` - Trainer management endpoints
-  - POST /api/trainer/register
-  - GET /api/trainer/profile
-  - PUT /api/trainer/profile
-  - GET /api/trainer/trainings
-  - PATCH /api/trainer/status
+  - POST /api/v1/trainer/register
+  - GET /api/v1/trainer/profile
+  - PUT /api/v1/trainer/profile
+  - GET /api/v1/trainer/trainings
+  - PATCH /api/v1/trainer/status
 
 - `UserController.java` - Authentication endpoints
-  - GET /api/user/login
-  - PUT /api/user/change-password
+  - GET /api/v1/user/login
+  - PUT /api/v1/user/change-password
 
 - `TrainingController.java` - Training management endpoints
-  - POST /api/training
-  - GET /api/training/types
+  - POST /api/v1/training
+  - GET /api/v1/training/types
+
+- `TrainingTypeController.java` - Training type management endpoints
+  - POST /api/v1/training-types
 
 #### 3. **dao/** - Data Access Layer (Spring Data JPA Repositories)
 - `TraineeDao.java` - Trainee repository with username lookup
@@ -88,6 +91,7 @@ exgym-training-program/
 - `GetTraineeTrainingsRequest.java`
 - `GetTrainerTrainingsRequest.java`
 - `AddTrainingRequest.java`
+- `AddTrainingTypeRequest.java`
 - `ActivateDeactivateRequest.java`
 
 **Response DTOs (`dto/response/`):**
@@ -254,7 +258,7 @@ All errors include:
 
 3. **trainer** - Trainer-specific data
    - id (PK, auto-increment)
-   - specialization (required, String)
+  - training_type_id (required, FK to training_type)
    - user_id (FK to user, one-to-one)
 
 4. **training** - Training sessions
@@ -306,7 +310,7 @@ Access at: `http://localhost:8080/swagger-ui.html`
 
 **Register Trainee:**
 ```bash
-curl -X POST http://localhost:8080/api/trainee/register \
+curl -X POST http://localhost:8080/api/v1/trainee/register \
   -H "Content-Type: application/json" \
   -d '{
     "firstName": "John",
@@ -318,7 +322,7 @@ curl -X POST http://localhost:8080/api/trainee/register \
 
 **Login:**
 ```bash
-curl -X GET http://localhost:8080/api/user/login \
+curl -X GET http://localhost:8080/api/v1/user/login \
   -H "Content-Type: application/json" \
   -d '{
     "username": "John.Doe",
@@ -328,7 +332,7 @@ curl -X GET http://localhost:8080/api/user/login \
 
 **Get Trainee Profile:**
 ```bash
-curl -X GET http://localhost:8080/api/trainee/profile \
+curl -X GET http://localhost:8080/api/v1/trainee/profile \
   -H "Content-Type: application/json" \
   -d '{
     "username": "John.Doe"
@@ -337,32 +341,35 @@ curl -X GET http://localhost:8080/api/trainee/profile \
 
 ## API Endpoints Summary
 
-### Implemented REST Endpoints (17 total)
+### Implemented REST Endpoints (18 total)
 
 **Trainee Management:**
-1. POST /api/trainee/register - Register new trainee
-2. GET /api/trainee/profile - Get trainee profile
-3. PUT /api/trainee/profile - Update trainee profile
-4. DELETE /api/trainee/profile - Delete trainee profile
-5. GET /api/trainee/trainers/not-assigned - Get available trainers
-6. PUT /api/trainee/trainers - Update trainer assignments
-7. GET /api/trainee/trainings - Get trainee's training list
-8. PATCH /api/trainee/status - Activate/deactivate trainee
+1. POST /api/v1/trainee/register - Register new trainee
+2. GET /api/v1/trainee/profile - Get trainee profile
+3. PUT /api/v1/trainee/profile - Update trainee profile
+4. DELETE /api/v1/trainee/profile - Delete trainee profile
+5. GET /api/v1/trainee/trainers/not-assigned - Get available trainers
+6. PUT /api/v1/trainee/trainers - Update trainer assignments
+7. GET /api/v1/trainee/trainings - Get trainee's training list
+8. PATCH /api/v1/trainee/status - Activate/deactivate trainee
 
 **Trainer Management:**
-9. POST /api/trainer/register - Register new trainer
-10. GET /api/trainer/profile - Get trainer profile
-11. PUT /api/trainer/profile - Update trainer profile
-12. GET /api/trainer/trainings - Get trainer's training list
-13. PATCH /api/trainer/status - Activate/deactivate trainer
+9. POST /api/v1/trainer/register - Register new trainer
+10. GET /api/v1/trainer/profile - Get trainer profile
+11. PUT /api/v1/trainer/profile - Update trainer profile
+12. GET /api/v1/trainer/trainings - Get trainer's training list
+13. PATCH /api/v1/trainer/status - Activate/deactivate trainer
 
 **Authentication:**
-14. GET /api/user/login - User login
-15. PUT /api/user/change-password - Change password
+14. GET /api/v1/user/login - User login
+15. PUT /api/v1/user/change-password - Change password
 
 **Training Management:**
-16. POST /api/training - Add new training
-17. GET /api/training/types - Get training types
+16. POST /api/v1/training - Add new training
+17. GET /api/v1/training/types - Get training types
+
+**Training Type Management:**
+18. POST /api/v1/training-types - Add training type
 
 ## Key Features
 
@@ -385,10 +392,24 @@ curl -X GET http://localhost:8080/api/trainee/profile \
 
 ### Design Decisions
 1. **No Training Updates**: Training sessions cannot be modified or deleted after creation
-2. **Trainer Specialization**: Stored as String rather than referencing TrainingTypeEntity
+2. **Trainer Specialization**: Stored as foreign key reference to `TrainingTypeEntity`
 3. **Authentication Pattern**: Login endpoint available but no automatic enforcement via filters
 4. **Hard Delete**: Trainee deletion permanently removes data and cascades to trainings
 5. **Trainer Delete**: Trainer deletion preserves associated trainings
+
+### Coding Standards
+
+#### Import Guidelines
+- **No Inline Fully-Qualified Names**: Always use proper import statements at the top of the file - NO EXCEPTIONS
+- **Forbidden Pattern**: `java.util.Map<Long, User> existingUsers` or `new java.util.ArrayList<>()`
+- **Correct Pattern**: Add `import java.util.Map;` at the top, then use `Map<Long, User> existingUsers`
+- **Rationale**: Inline fully-qualified class names reduce code readability and violate Java conventions
+- **For Name Conflicts**: When classes have identical simple names (e.g., `Date`), import the most frequently used one and use a class alias or refactor to avoid ambiguity. Never use inline fully-qualified names in the code body.
+
+#### General Style
+- Use proper imports for all classes from `java.util.*`, `java.time.*`, etc.
+- Keep imports organized and clean (remove unused imports)
+- Follow standard Java naming conventions
 
 ## Common Tasks for Agents
 
@@ -433,7 +454,8 @@ curl -X GET http://localhost:8080/api/trainee/profile \
 - **Logging Pattern**: Includes transaction ID via MDC: `%X{transactionId}`
 - **Date Format**: Uses `java.util.Date` throughout
 - **Validation**: Uses Jakarta Bean Validation (javax.validation)
-- **API Prefix**: All endpoints start with `/api/`
+- **API Prefix**: All endpoints start with `/api/v1/` (versioned)
+- **API Versioning**: Version configured in `application.properties` as `api.version=/api/v1`
 - **Security**: Currently configured to permit all requests
 
 ## Contact & Support

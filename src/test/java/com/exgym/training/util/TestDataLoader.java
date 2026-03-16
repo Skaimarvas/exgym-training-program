@@ -52,7 +52,7 @@ public class TestDataLoader {
             Trainer trainer = Trainer.builder()
                     .id(Long.parseLong(row[1]))
                     .user(user)
-                    .specialization(row[7])
+                    .specialization(new TrainingTypeEntity(null, row[7]))
                     .build();
             trainers.add(trainer);
         }

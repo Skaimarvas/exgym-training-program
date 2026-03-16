@@ -29,10 +29,14 @@ A comprehensive gym training management system built with Spring Boot, providing
   - Update trainer profiles
   - Activate/Deactivate trainer accounts
   - Find trainers not assigned to specific trainees
+   - Trainer specialization validated against `training_type` table
 - **Training Session Management**:
   - Create training sessions with specific details
   - Query trainee trainings with filters (date range, trainer, training type)
   - Query trainer trainings with filters (date range, trainee)
+   - Validation for training date (must be now/future) and duration bounds
+- **Training Type Management**:
+   - Default training types are auto-seeded on startup when table is empty (`YOGA`, `STRENGTH`, `CARDIO`)
 - **Authentication**: Password-based authentication system
 - **Custom Exception Handling**: Comprehensive error handling with custom exceptions
 
@@ -89,14 +93,14 @@ The application uses PostgreSQL for production. You need to configure your datab
 
 ```properties
 # Database Configuration
-spring.datasource.url=jdbc:postgresql://localhost:5432/exgym_db
+spring.datasource.url=${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/postgres}
 spring.datasource.username=YOUR_DATABASE_USERNAME
 spring.datasource.password=YOUR_DATABASE_PASSWORD
 
 # Hibernate Configuration
 spring.jpa.properties.hibernate.default_schema=exgym
 spring.jpa.show-sql=true
-spring.jpa.hibernate.ddl-auto=update
+spring.jpa.hibernate.ddl-auto=create
 ```
 
 **Important**: Replace `YOUR_DATABASE_USERNAME` and `YOUR_DATABASE_PASSWORD` with your actual PostgreSQL credentials.
@@ -108,12 +112,16 @@ spring.jpa.hibernate.ddl-auto=update
    CREATE DATABASE exgym_db;
    ```
 
-2. **Create the schema**:
+2. If using a custom DB name, update `spring.datasource.url` accordingly (for example `jdbc:postgresql://localhost:5432/exgym_db`).
+
+3. **Create the schema**:
    ```sql
    CREATE SCHEMA exgym;
    ```
 
-3. The application will automatically create the necessary tables on startup using Hibernate's `ddl-auto=update` setting.
+4. The application will automatically create the necessary tables on startup using Hibernate's `ddl-auto=create` setting.
+
+**Note**: `ddl-auto=create` recreates schema objects on startup (development-friendly, data-destructive). Use `update` or migrations for persistent environments.
 
 ### Alternative: Using H2 (In-Memory Database)
 
@@ -190,9 +198,11 @@ exgym-training-program/
 ├── src/
 │   ├── main/
 │   │   ├── java/com/exgym/training/
+│   │   │   ├── config/            # Interceptors, exception handling, OpenAPI, seeding
+│   │   │   ├── controller/        # REST controllers
 │   │   │   ├── dao/               # Data Access Layer (Repositories)
+│   │   │   ├── dto/               # Request/response DTOs (domain-organized)
 │   │   │   ├── entity/            # JPA Entities
-│   │   │   ├── enums/             # Enumerations (TrainingType)
 │   │   │   ├── exception/         # Custom Exceptions
 │   │   │   ├── facade/            # Facade Pattern Implementation
 │   │   │   ├── service/           # Business Logic Layer
@@ -229,9 +239,9 @@ exgym-training-program/
 - `selectByUsername(userName)`: Get trainee by username
 - `authenticate(userName, password)`: Authenticate trainee
 - `changePassword(userName, oldPassword, newPassword)`: Change password
-- `activate(userName)`: Activate trainee account
-- `deactivate(userName)`: Deactivate trainee account
-- `updateTrainersList(traineeUserName, trainerIds)`: Update assigned trainers
+- `updateStatus(userName, isActive)`: Set trainee active/inactive status
+- `updateProfile(userName, firstName, lastName, dateOfBirth, address, isActive)`: Update trainee profile
+- `updateTrainersList(traineeUserName, trainers)`: Update assigned trainers (persists owning side)
 
 **TrainerService**:
 - `create(firstName, lastName, specialization)`: Create new trainer
@@ -240,34 +250,26 @@ exgym-training-program/
 - `selectByUsername(userName)`: Get trainer by username
 - `authenticate(userName, password)`: Authenticate trainer
 - `changePassword(userName, oldPassword, newPassword)`: Change password
-- `activate(userName)`: Activate trainer account
-- `deactivate(userName)`: Deactivate trainer account
+- `updateStatus(userName, isActive)`: Set trainer active/inactive status
+- `updateProfile(userName, firstName, lastName, isActive)`: Update trainer profile
 - `findNotAssignedToTrainee(traineeUserName)`: Find available trainers
 
 **TrainingService**:
 - `create(trainer, trainee, trainingName, trainingType, trainingDate, trainingDuration)`: Create training session
 - `select(trainingId)`: Get training by ID
-- `getTraineeTrainings(traineeUserName, fromDate, toDate, trainerName, trainingType)`: Query trainee's trainings
-- `getTrainerTrainings(trainerUserName, fromDate, toDate, traineeName)`: Query trainer's trainings
+- `getTraineeTrainings(request)`: Query trainee's trainings by DTO filters
+- `getTrainerTrainings(request)`: Query trainer's trainings by DTO filters
 
 #### 3. Training Types
 
-Available training types (defined in `TrainingType` enum):
-- CARDIO
-- STRENGTH
-- FLEXIBILITY
-- BALANCE
-- BULKING
-- CUTTING
-- MAINTENANCE
-- HIIT
-- ENDURANCE
-- FUNCTIONAL
-- CIRCUIT_TRAINING
-- CROSS_FIT
+Training types are persisted in the `training_type` table and referenced by foreign key:
+- `trainer.training_type_id`
+- `training.training_type_id`
+
+On startup, default values are auto-seeded when the table is empty:
 - YOGA
-- PILATES
-- SPORTS_SPECIFIC
+- STRENGTH
+- CARDIO
 
 ## Code Quality
 
@@ -289,6 +291,7 @@ The application uses custom exceptions for better error handling:
 - **Logging**: Comprehensive logging using SLF4J
 - **Builder Pattern**: Using Lombok's `@SuperBuilder` for entity creation
 - **Exception Handling**: Custom exceptions with meaningful messages
+- **Validation**: Bad request type mismatches handled as HTTP 400 (e.g., invalid boolean/date formats)
 
 ### Code Coverage
 
@@ -353,12 +356,8 @@ View the HTML report at: `target/site/jacoco/index.html`
 
 ---
 
-**Note**: This application is designed for educational/demonstration purposes. For production use, consider adding:
-- REST API endpoints with proper controllers
-- Authentication and authorization with JWT
-- Password encryption (BCrypt)
-- Input validation with Bean Validation
-- API documentation with Swagger/OpenAPI
-- Actuator endpoints for monitoring
-- Centralized exception handling with @ControllerAdvice
-- DTOs for API requests/responses
+**Note**: This application is designed for educational/demonstration purposes. For production use, consider:
+- Enforcing authentication/authorization on protected endpoints
+- Password hashing (e.g., BCrypt)
+- Replacing `ddl-auto=create` with migrations (Flyway/Liquibase)
+- Adding integration/API tests for endpoint-level contract coverage

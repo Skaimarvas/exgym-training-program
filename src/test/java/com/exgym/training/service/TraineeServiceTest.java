@@ -1,7 +1,6 @@
 package com.exgym.training.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -13,7 +12,9 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -24,8 +25,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.exgym.training.dao.TraineeDao;
+import com.exgym.training.dao.TrainerDao;
+import com.exgym.training.dao.UserDao;
 import com.exgym.training.entity.Trainee;
-import com.exgym.training.exception.InvalidCredentialsException;
+import com.exgym.training.entity.Trainer;
+import com.exgym.training.entity.User;
 import com.exgym.training.exception.ResourceNotFoundException;
 import com.exgym.training.util.CredentialsGenerator;
 import com.exgym.training.util.TestDataLoader;
@@ -38,12 +42,13 @@ class TraineeServiceTest {
     private TraineeDao traineeDao;
 
     @Mock
-    private CredentialsGenerator credentialsGenerator;
+    private UserDao userDao;
 
     @Mock
-    private TrainingMetrics trainingMetrics;
+    private TrainerDao trainerDao;
 
-    private UserAuthenticationService authService;
+    @Mock
+    private CredentialsGenerator credentialsGenerator;
 
     private TraineeService traineeService;
 
@@ -51,9 +56,9 @@ class TraineeServiceTest {
 
     @BeforeEach
     void setUp() {
-        authService = new UserAuthenticationService();
-        traineeService = new TraineeService(traineeDao, credentialsGenerator, authService, trainingMetrics);
+        traineeService = new TraineeService(traineeDao, trainerDao, userDao, credentialsGenerator);
         testTrainee = TestDataLoader.loadTrainees().get(0);
+        lenient().when(userDao.findAll()).thenReturn(new ArrayList<>());
         lenient().when(credentialsGenerator.generateUsername(any(), any(), any()))
                 .thenReturn(testTrainee.getUser().getUserName());
         lenient().when(credentialsGenerator.generatePassword())
@@ -76,6 +81,9 @@ class TraineeServiceTest {
 
     @Test
     void testCreateWithDuplicateUsername() {
+        List<User> existingUsers = new ArrayList<>();
+        existingUsers.add(testTrainee.getUser());
+        when(userDao.findAll()).thenReturn(existingUsers);
         when(credentialsGenerator.generateUsername(any(), any(), any())).thenReturn("John.Doe1");
 
         Trainee created = traineeService.create("John", "Doe", "123 Main St", new Date());
@@ -161,109 +169,6 @@ class TraineeServiceTest {
     }
 
     @Test
-    void testAuthenticate_Success() {
-        when(traineeDao.findByUser_UserName("John.Doe")).thenReturn(Optional.of(testTrainee));
-
-        boolean result = traineeService.authenticate("John.Doe", testTrainee.getUser().getPassword());
-
-        assertTrue(result);
-        verify(traineeDao, times(1)).findByUser_UserName("John.Doe");
-    }
-
-    @Test
-    void testAuthenticate_WrongPassword() {
-        when(traineeDao.findByUser_UserName("John.Doe")).thenReturn(Optional.of(testTrainee));
-
-        boolean result = traineeService.authenticate("John.Doe", "wrongPassword");
-
-        assertFalse(result);
-        verify(traineeDao, times(1)).findByUser_UserName("John.Doe");
-    }
-
-    @Test
-    void testAuthenticate_UserNotFound() {
-        when(traineeDao.findByUser_UserName("John.Doe")).thenReturn(Optional.empty());
-
-        boolean result = traineeService.authenticate("John.Doe", "password");
-
-        assertFalse(result);
-        verify(traineeDao, times(1)).findByUser_UserName("John.Doe");
-    }
-
-    @Test
-    void testChangePassword_Success() {
-        when(traineeDao.findByUser_UserName("John.Doe")).thenReturn(Optional.of(testTrainee));
-        when(traineeDao.save(any(Trainee.class))).thenReturn(testTrainee);
-
-        Trainee result = traineeService.changePassword("John.Doe", testTrainee.getUser().getPassword(),
-                "newPassword123");
-
-        assertNotNull(result);
-        verify(traineeDao, times(1)).findByUser_UserName("John.Doe");
-        verify(traineeDao, times(1)).save(testTrainee);
-    }
-
-    @Test
-    void testChangePassword_UserNotFound() {
-        when(traineeDao.findByUser_UserName("John.Doe")).thenReturn(Optional.empty());
-
-        assertThrows(ResourceNotFoundException.class,
-                () -> traineeService.changePassword("John.Doe", "oldPassword", "newPassword"));
-
-        verify(traineeDao, times(1)).findByUser_UserName("John.Doe");
-        verify(traineeDao, never()).save(any(Trainee.class));
-    }
-
-    @Test
-    void testChangePassword_WrongOldPassword() {
-        when(traineeDao.findByUser_UserName("John.Doe")).thenReturn(Optional.of(testTrainee));
-
-        assertThrows(InvalidCredentialsException.class,
-                () -> traineeService.changePassword("John.Doe", "wrongOldPassword", "newPassword"));
-
-        verify(traineeDao, times(1)).findByUser_UserName("John.Doe");
-        verify(traineeDao, never()).save(any(Trainee.class));
-    }
-
-    @Test
-    void testToggleActivation_FromInactiveToActive() {
-        testTrainee.getUser().setIsActive(false);
-        when(traineeDao.findByUser_UserName("John.Doe")).thenReturn(Optional.of(testTrainee));
-        when(traineeDao.save(any(Trainee.class))).thenReturn(testTrainee);
-
-        Trainee result = traineeService.toggleActivation("John.Doe");
-
-        assertNotNull(result);
-        assertTrue(result.getUser().getIsActive());
-        verify(traineeDao, times(1)).findByUser_UserName("John.Doe");
-        verify(traineeDao, times(1)).save(testTrainee);
-    }
-
-    @Test
-    void testToggleActivation_FromActiveToInactive() {
-        testTrainee.getUser().setIsActive(true);
-        when(traineeDao.findByUser_UserName("John.Doe")).thenReturn(Optional.of(testTrainee));
-        when(traineeDao.save(any(Trainee.class))).thenReturn(testTrainee);
-
-        Trainee result = traineeService.toggleActivation("John.Doe");
-
-        assertNotNull(result);
-        assertFalse(result.getUser().getIsActive());
-        verify(traineeDao, times(1)).findByUser_UserName("John.Doe");
-        verify(traineeDao, times(1)).save(testTrainee);
-    }
-
-    @Test
-    void testToggleActivation_UserNotFound() {
-        when(traineeDao.findByUser_UserName("John.Doe")).thenReturn(Optional.empty());
-
-        assertThrows(ResourceNotFoundException.class, () -> traineeService.toggleActivation("John.Doe"));
-
-        verify(traineeDao, times(1)).findByUser_UserName("John.Doe");
-        verify(traineeDao, never()).save(any(Trainee.class));
-    }
-
-    @Test
     void testDeleteByUsername_Success() {
         when(traineeDao.findByUser_UserName("John.Doe")).thenReturn(Optional.of(testTrainee));
         doNothing().when(traineeDao).delete(testTrainee);
@@ -286,24 +191,41 @@ class TraineeServiceTest {
 
     @Test
     void testUpdateTrainersList() {
-        when(traineeDao.findByUser_UserName("John.Doe")).thenReturn(Optional.of(testTrainee));
-        when(traineeDao.save(any(Trainee.class))).thenReturn(testTrainee);
+        Trainer trainerOne = TestDataLoader.loadTrainers().get(0);
+        trainerOne.setTrainees(new java.util.HashSet<>());
+        Trainer trainerTwo = TestDataLoader.loadTrainers().get(1);
+        trainerTwo.setTrainees(new java.util.HashSet<>());
+        Set<String> usernames = Set.of(
+                trainerOne.getUser().getUserName(),
+                trainerTwo.getUser().getUserName());
 
-        Trainee result = traineeService.updateTrainersList("John.Doe", java.util.Set.of(1L, 2L));
+        when(traineeDao.findByUser_UserName("John.Doe")).thenReturn(Optional.of(testTrainee));
+        when(trainerDao.findAllByUser_UserNameIn(usernames)).thenReturn(List.of(trainerOne, trainerTwo));
+        when(trainerDao.save(any(Trainer.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(traineeDao.save(any(Trainee.class))).thenReturn(testTrainee);
+        when(traineeDao.findProfileByUser_UserName("John.Doe")).thenReturn(Optional.of(testTrainee));
+
+        Trainee result = traineeService.updateTrainersList("John.Doe", usernames);
 
         assertNotNull(result);
         verify(traineeDao, times(1)).findByUser_UserName("John.Doe");
+        verify(trainerDao, times(1)).findAllByUser_UserNameIn(usernames);
+        verify(trainerDao, times(2)).save(any(Trainer.class));
         verify(traineeDao, times(1)).save(testTrainee);
+        verify(traineeDao, times(1)).findProfileByUser_UserName("John.Doe");
     }
 
     @Test
     void testUpdateTrainersList_UserNotFound() {
+        Trainer trainer = TestDataLoader.loadTrainers().get(0);
         when(traineeDao.findByUser_UserName("John.Doe")).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class,
-                () -> traineeService.updateTrainersList("John.Doe", Set.of(1L, 2L)));
+            () -> traineeService.updateTrainersList("John.Doe", Set.of(trainer.getUser().getUserName())));
 
         verify(traineeDao, times(1)).findByUser_UserName("John.Doe");
+        verify(trainerDao, never()).findAllByUser_UserNameIn(any());
+        verify(trainerDao, never()).save(any(Trainer.class));
         verify(traineeDao, never()).save(any(Trainee.class));
     }
 }

@@ -1,10 +1,5 @@
 package com.exgym.training.controller;
 
-import java.util.List;
-import java.util.stream.Collectors;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,42 +8,28 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.exgym.training.dao.TrainingTypeDao;
-import com.exgym.training.dto.request.AddTrainingRequest;
-import com.exgym.training.dto.response.TrainingTypeResponse;
-import com.exgym.training.entity.Trainee;
-import com.exgym.training.entity.Trainer;
-import com.exgym.training.entity.TrainingTypeEntity;
-import com.exgym.training.exception.ResourceNotFoundException;
-import com.exgym.training.service.TraineeService;
-import com.exgym.training.service.TrainerService;
-import com.exgym.training.service.TrainingService;
+import com.exgym.training.dto.training.request.AddTrainingRequest;
+import com.exgym.training.dto.training.response.TrainingTypeResponse;
+import com.exgym.training.facade.TrainingFacade;
 
 import io.swagger.v3.oas.annotations. Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestController
-@RequestMapping("/api/training")
+@RequestMapping("${api.version}/training")
 @Tag(name = "Training Management", description = "Endpoints for managing trainings and training types")
 public class TrainingController {
 
-    private static final Logger logger = LoggerFactory.getLogger(TrainingController.class);
-
-    private final TrainingService trainingService;
-    private final TraineeService traineeService;
-    private final TrainerService trainerService;
-    private final TrainingTypeDao trainingTypeDao;
+    private final TrainingFacade trainingFacade;
 
     @Autowired
-    public TrainingController(TrainingService trainingService, TraineeService traineeService, 
-                             TrainerService trainerService, TrainingTypeDao trainingTypeDao) {
-        this.trainingService = trainingService;
-        this.traineeService = traineeService;
-        this.trainerService = trainerService;
-        this.trainingTypeDao = trainingTypeDao;
+    public TrainingController(TrainingFacade trainingFacade) {
+        this.trainingFacade = trainingFacade;
     }
 
     @Operation(summary = "Add training", description = "Create a new training session")
@@ -59,28 +40,11 @@ public class TrainingController {
     })
     @PostMapping
     public ResponseEntity<Void> addTraining(@Valid @RequestBody AddTrainingRequest request) {
-        logger.debug("Adding new training: {} for trainee: {} and trainer: {}", 
+        log.debug("Adding new training: {} for trainee: {} and trainer: {}", 
             request.getTrainingName(), request.getTraineeUsername(), request.getTrainerUsername());
+        trainingFacade.addTraining(request);
         
-        Trainee trainee = traineeService.selectByUsername(request.getTraineeUsername())
-                .orElseThrow(() -> new ResourceNotFoundException("Trainee", "username", request.getTraineeUsername()));
-        
-        Trainer trainer = trainerService.selectByUsername(request.getTrainerUsername())
-                .orElseThrow(() -> new ResourceNotFoundException("Trainer", "username", request.getTrainerUsername()));
-        
-        // Use trainer's specialization as training type
-        String trainingTypeName = trainer.getSpecialization();
-        
-        trainingService.create(
-            trainer,
-            trainee,
-            request.getTrainingName(),
-            trainingTypeName,
-            request.getTrainingDate(),
-            request.getTrainingDuration()
-        );
-        
-        logger.info("Training added successfully: {}", request.getTrainingName());
+        log.info("Training added successfully: {}", request.getTrainingName());
         return ResponseEntity.ok().build();
     }
 
@@ -90,17 +54,8 @@ public class TrainingController {
     })
     @GetMapping("/types")
     public ResponseEntity<TrainingTypeResponse> getTrainingTypes() {
-        logger.debug("Fetching all training types");
-        
-        List<TrainingTypeEntity> allTypes = trainingTypeDao.findAll();
-        List<TrainingTypeResponse.TrainingTypeInfo> trainingTypes = allTypes.stream()
-                .map(type -> new TrainingTypeResponse.TrainingTypeInfo(
-                    type.getTrainingTypeName(),
-                    type.getId().intValue()
-                ))
-                .collect(Collectors.toList());
-        
-        TrainingTypeResponse response = new TrainingTypeResponse(trainingTypes);
+        log.debug("Fetching all training types");
+        TrainingTypeResponse response = trainingFacade.getTrainingTypes();
         return ResponseEntity.ok(response);
     }
 }

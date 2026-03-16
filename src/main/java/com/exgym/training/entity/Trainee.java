@@ -16,14 +16,17 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.CascadeType;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
 
 @Data
+@EqualsAndHashCode(of = "id")
 @NoArgsConstructor
 @AllArgsConstructor
 @SuperBuilder
@@ -46,8 +49,10 @@ public class Trainee {
     private User user;
 
     @ManyToMany(mappedBy = "trainees")
+    @JsonIgnore
     private Set<Trainer> trainers;
 
     @OneToMany(mappedBy = "trainee", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
     private Set<Training> trainings;
 }
