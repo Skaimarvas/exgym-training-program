@@ -37,7 +37,10 @@ A comprehensive gym training management system built with Spring Boot, providing
    - Validation for training date (must be now/future) and duration bounds
 - **Training Type Management**:
    - Default training types are auto-seeded on startup when table is empty (`YOGA`, `STRENGTH`, `CARDIO`)
-- **Authentication**: Password-based authentication system
+- **Authentication**:
+   - Public registration and login endpoints
+   - JWT bearer authentication for protected endpoints
+   - BCrypt password hashing with logout token invalidation
 - **Custom Exception Handling**: Comprehensive error handling with custom exceptions
 
 ## Technology Stack
@@ -86,24 +89,29 @@ Before running this application, ensure you have the following installed:
 
 ### Database Configuration
 
-The application uses PostgreSQL for production. You need to configure your database connection in `src/main/resources/application.properties`:
+The application uses Spring profiles for datasource selection:
 
-1. Open `application.properties`
-2. Update the following properties with your database credentials:
+- `application.properties`: shared defaults
+- `application-local.properties`: local H2 configuration
+- `application-dev.properties`: PostgreSQL development configuration
+
+If you want to run against PostgreSQL, configure `src/main/resources/application-dev.properties` and start the app with the `dev` profile.
+
+Update the following properties with your database credentials:
 
 ```properties
 # Database Configuration
-spring.datasource.url=${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/postgres}
+spring.datasource.url=jdbc:postgresql://localhost:5432/exgym_db
 spring.datasource.username=YOUR_DATABASE_USERNAME
 spring.datasource.password=YOUR_DATABASE_PASSWORD
 
 # Hibernate Configuration
 spring.jpa.properties.hibernate.default_schema=exgym
 spring.jpa.show-sql=true
-spring.jpa.hibernate.ddl-auto=create
+spring.jpa.hibernate.ddl-auto=update
 ```
 
-**Important**: Replace `YOUR_DATABASE_USERNAME` and `YOUR_DATABASE_PASSWORD` with your actual PostgreSQL credentials.
+**Important**: Replace the datasource values with your actual PostgreSQL credentials.
 
 ### Database Setup
 
@@ -119,22 +127,13 @@ spring.jpa.hibernate.ddl-auto=create
    CREATE SCHEMA exgym;
    ```
 
-4. The application will automatically create the necessary tables on startup using Hibernate's `ddl-auto=create` setting.
+4. The application will automatically create or update the necessary tables on startup based on the configured `ddl-auto` setting.
 
-**Note**: `ddl-auto=create` recreates schema objects on startup (development-friendly, data-destructive). Use `update` or migrations for persistent environments.
+**Note**: The default `local` profile still uses H2. Use the `dev` profile when you want PostgreSQL.
 
 ### Alternative: Using H2 (In-Memory Database)
 
-For quick testing without PostgreSQL, you can use H2 database:
-
-1. Comment out PostgreSQL configuration in `application.properties`
-2. Add H2 configuration:
-   ```properties
-   spring.datasource.url=jdbc:h2:mem:exgym_db
-   spring.datasource.driverClassName=org.h2.Driver
-   spring.jpa.database-platform=org.hibernate.dialect.H2Dialect
-   spring.h2.console.enabled=true
-   ```
+For quick testing without PostgreSQL, use the default `local` profile. It already points to H2.
 
 ## Running the Application
 
@@ -148,6 +147,11 @@ For quick testing without PostgreSQL, you can use H2 database:
 2. **Run the application**:
    ```bash
    mvn spring-boot:run
+   ```
+
+3. **Run with PostgreSQL dev profile**:
+   ```bash
+   mvn spring-boot:run -Dspring-boot.run.profiles=dev
    ```
 
 ### Using Maven Wrapper (if mvnw is available)
@@ -221,6 +225,43 @@ exgym-training-program/
 
 ## API Overview
 
+### Authentication Model
+
+- Public endpoints: `POST /api/v1/trainee/register`, `POST /api/v1/trainer/register`, `POST /api/v1/user/login`
+- Protected endpoints: all remaining API endpoints require `Authorization: Bearer <jwt>`
+- Ownership is enforced on trainee and trainer resources. The authenticated username from the JWT must match the requested username.
+- `POST /api/v1/user/logout` revokes the current bearer token.
+
+### Common Request Flow
+
+**Register trainee**
+```bash
+curl -X POST "http://localhost:8080/api/v1/trainee/register" \
+   -H "Content-Type: application/json" \
+   -d '{
+      "firstName": "John",
+      "lastName": "Doe",
+      "dateOfBirth": "1990-01-15",
+      "address": "123 Main St"
+   }'
+```
+
+**Login**
+```bash
+curl -X POST "http://localhost:8080/api/v1/user/login" \
+   -H "Content-Type: application/json" \
+   -d '{
+      "username": "John.Doe",
+      "password": "generatedPassword"
+   }'
+```
+
+**Get trainee profile**
+```bash
+curl -X GET "http://localhost:8080/api/v1/trainee/profile?username=John.Doe" \
+   -H "Authorization: Bearer <jwt-token>"
+```
+
 ### Core Components
 
 #### 1. Entities
@@ -237,8 +278,6 @@ exgym-training-program/
 - `delete(traineeId)`: Delete trainee by ID
 - `select(traineeId)`: Get trainee by ID
 - `selectByUsername(userName)`: Get trainee by username
-- `authenticate(userName, password)`: Authenticate trainee
-- `changePassword(userName, oldPassword, newPassword)`: Change password
 - `updateStatus(userName, isActive)`: Set trainee active/inactive status
 - `updateProfile(userName, firstName, lastName, dateOfBirth, address, isActive)`: Update trainee profile
 - `updateTrainersList(traineeUserName, trainers)`: Update assigned trainers (persists owning side)
@@ -248,11 +287,14 @@ exgym-training-program/
 - `update(trainer)`: Update trainer information
 - `select(trainerId)`: Get trainer by ID
 - `selectByUsername(userName)`: Get trainer by username
-- `authenticate(userName, password)`: Authenticate trainer
-- `changePassword(userName, oldPassword, newPassword)`: Change password
 - `updateStatus(userName, isActive)`: Set trainer active/inactive status
 - `updateProfile(userName, firstName, lastName, isActive)`: Update trainer profile
 - `findNotAssignedToTrainee(traineeUserName)`: Find available trainers
+
+**UserService**:
+- `login(username, password)`: Validate credentials and issue JWT
+- `changePassword(username, oldPassword, newPassword)`: Change password for authenticated user
+- `logout(token)`: Revoke the current JWT
 
 **TrainingService**:
 - `create(trainer, trainee, trainingName, trainingType, trainingDate, trainingDuration)`: Create training session
@@ -327,7 +369,7 @@ View the HTML report at: `target/site/jacoco/index.html`
 
 1. **Database Connection Error**:
    - Verify PostgreSQL is running
-   - Check database credentials in `application.properties`
+   - Check database credentials in the active profile properties file
    - Ensure database and schema exist
 
 2. **Port Already in Use**:
@@ -357,7 +399,6 @@ View the HTML report at: `target/site/jacoco/index.html`
 ---
 
 **Note**: This application is designed for educational/demonstration purposes. For production use, consider:
-- Enforcing authentication/authorization on protected endpoints
-- Password hashing (e.g., BCrypt)
-- Replacing `ddl-auto=create` with migrations (Flyway/Liquibase)
+- Rotating the JWT secret and managing it outside source control
+- Replacing `ddl-auto` schema management with migrations (Flyway/Liquibase)
 - Adding integration/API tests for endpoint-level contract coverage

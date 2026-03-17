@@ -4,13 +4,13 @@
 This is a Spring Boot REST API application for managing gym training programs, trainers, trainees, and training sessions. The application provides comprehensive RESTful endpoints for user registration, authentication, profile management, and training session coordination.
 
 ## Technology Stack
-- **Framework**: Spring Boot 3.x
+- **Framework**: Spring Boot 4.x
 - **Build Tool**: Maven
 - **Language**: Java
 - **Database**: JPA/Hibernate with configurable datasource
 - **API Documentation**: OpenAPI 3 (Swagger)
 - **Testing**: JUnit 5, Mockito
-- **Security**: Spring Security (currently configured to permit all)
+- **Security**: Spring Security with JWT bearer authentication, BCrypt password hashing, brute-force protection, and token revocation on logout
 
 ## Project Structure
 
@@ -39,30 +39,31 @@ exgym-training-program/
 - `GlobalExceptionHandler.java` - Centralized exception handling with transaction ID tracking
 - `LoggingInterceptor.java` - HTTP request/response logging with transaction ID generation
 - `OpenApiConfig.java` - Swagger/OpenAPI documentation configuration
-- `SecurityConfig.java` - Spring Security configuration (currently permit all)
+- `SecurityConfig.java` - JWT-based Spring Security configuration with public and protected routes
 - `WebConfig.java` - Spring MVC configuration, registers interceptors
 
 #### 2. **controller/** - REST API Endpoints
 - `TraineeController.java` - Trainee management endpoints
   - POST /api/v1/trainee/register
-  - GET /api/v1/trainee/profile
+  - GET /api/v1/trainee/profile?username={username}
   - PUT /api/v1/trainee/profile
   - DELETE /api/v1/trainee/profile
-  - GET /api/v1/trainee/trainers/not-assigned
+  - GET /api/v1/trainee/trainers/not-assigned?username={username}
   - PUT /api/v1/trainee/trainers
-  - GET /api/v1/trainee/trainings
+  - GET /api/v1/trainee/trainings?username={username}
   - PATCH /api/v1/trainee/status
 
 - `TrainerController.java` - Trainer management endpoints
   - POST /api/v1/trainer/register
-  - GET /api/v1/trainer/profile
+  - GET /api/v1/trainer/{username}/profile
   - PUT /api/v1/trainer/profile
-  - GET /api/v1/trainer/trainings
-  - PATCH /api/v1/trainer/status
+  - GET /api/v1/trainer/{username}/trainings
+  - PATCH /api/v1/trainer/{username}/status?isActive={true|false}
 
 - `UserController.java` - Authentication endpoints
-  - GET /api/v1/user/login
+  - POST /api/v1/user/login
   - PUT /api/v1/user/change-password
+  - POST /api/v1/user/logout
 
 - `TrainingController.java` - Training management endpoints
   - POST /api/v1/training
@@ -79,7 +80,7 @@ exgym-training-program/
 
 #### 4. **dto/** - Data Transfer Objects
 
-**Request DTOs (`dto/request/`):**
+**Request DTOs (domain-organized packages):**
 - `TraineeRegistrationRequest.java`
 - `TrainerRegistrationRequest.java`
 - `LoginRequest.java`
@@ -94,8 +95,9 @@ exgym-training-program/
 - `AddTrainingTypeRequest.java`
 - `ActivateDeactivateRequest.java`
 
-**Response DTOs (`dto/response/`):**
+**Response DTOs (domain-organized packages):**
 - `RegistrationResponse.java`
+- `LoginResponse.java`
 - `TraineeProfileResponse.java`
 - `TrainerProfileResponse.java`
 - `UpdateTraineeProfileResponse.java`
@@ -120,29 +122,30 @@ exgym-training-program/
 - Training → Trainer: Many-to-One
 - Training → TrainingTypeEntity: Many-to-One
 
-#### 6. **enums/** - Enumerations
-- `TrainingType.java` - Training type constants (CARDIO, STRENGTH, YOGA, etc.)
-
-#### 7. **exception/** - Custom Exceptions
+#### 6. **exception/** - Custom Exceptions
 - `ResourceNotFoundException.java` - 404 errors
 - `InvalidCredentialsException.java` - 401 errors
+- `AccountLockedException.java` - repeated failed login handling
 - `AlreadyExistsException.java` - 409 errors
 - `ValidationException.java` - 400 errors
 
-#### 8. **facade/** - Business Logic Coordination
+#### 7. **facade/** - Business Logic Coordination
 - `TrainingFacade.java` - Coordinates training creation across services
 
-#### 9. **service/** - Business Logic Layer
+#### 8. **service/** - Business Logic Layer
 - `TraineeService.java` - Trainee business logic
 - `TrainerService.java` - Trainer business logic
 - `TrainingService.java` - Training business logic
-- `UserAuthenticationService.java` - Authentication utilities
+- `UserService.java` - Login, password change, logout, and authentication workflows
+- `BruteForceProtectionService.java` - failed login tracking and lockout windows
+- `TokenBlacklistService.java` - revoked token tracking
+- `GeneratedCredentials.java` - generated username/password return type for registration
 
-#### 10. **util/** - Utility Classes
+#### 9. **util/** - Utility Classes
 - `CredentialsGenerator.java` - Username/password generation
 - `TransactionContext.java` - Thread-local transaction ID storage
 
-#### 11. **TrainingApplication.java** - Spring Boot main class
+#### 10. **TrainingApplication.java** - Spring Boot main class
 
 ### Test Structure (`src/test/java/com/exgym/training/`)
 
@@ -186,9 +189,12 @@ The application implements **two-level logging** as required:
    - Errors: exception details with stack trace
 
 ### 2. Authentication & Authorization
-- Login endpoint validates credentials (trainee or trainer)
-- **Note**: Authentication is available via login endpoint but not currently enforced automatically on protected endpoints
-- Implementation uses manual credential checking rather than filter/interceptor-based enforcement
+- `POST /api/v1/user/login` validates credentials and returns a JWT bearer token
+- Passwords are stored with BCrypt and checked through Spring Security user details
+- All endpoints except register/login, health, swagger, and H2 console require authentication
+- Controllers enforce ownership checks so users can only access their own trainee/trainer resources
+- `POST /api/v1/user/logout` revokes the current token through a blacklist service
+- Repeated failed logins trigger temporary account lockout
 
 ### 3. Username Generation
 - Format: `FirstName.LastName`
@@ -199,6 +205,10 @@ The application implements **two-level logging** as required:
 - Random 10-character alphanumeric string
 - Uses `SecureRandom` for cryptographic strength
 - Implemented in `CredentialsGenerator`
+
+### 4a. Password Storage
+- Generated passwords are returned once during registration
+- Persisted passwords are BCrypt-hashed before storage
 
 ### 5. Validation
 - Uses Jakarta Bean Validation (`@Valid`, `@NotBlank`, `@NotNull`, etc.)
@@ -236,6 +246,12 @@ All errors include:
   - `@Operation` - Summary and description
   - `@ApiResponses` - Response codes and meanings
 - Accessible at: `/swagger-ui.html`
+
+### 10. Profiles and Datasource Selection
+- `application.properties` contains shared defaults and uses `local` as the default profile
+- `application-local.properties` uses H2 for local development
+- `application-dev.properties` is intended for PostgreSQL configuration
+- If PostgreSQL settings are added to `application.properties` but the app still runs on H2, the active profile is probably still `local`
 
 ## Database Schema
 
@@ -322,7 +338,7 @@ curl -X POST http://localhost:8080/api/v1/trainee/register \
 
 **Login:**
 ```bash
-curl -X GET http://localhost:8080/api/v1/user/login \
+curl -X POST http://localhost:8080/api/v1/user/login \
   -H "Content-Type: application/json" \
   -d '{
     "username": "John.Doe",
@@ -332,16 +348,13 @@ curl -X GET http://localhost:8080/api/v1/user/login \
 
 **Get Trainee Profile:**
 ```bash
-curl -X GET http://localhost:8080/api/v1/trainee/profile \
-  -H "Content-Type: application/json" \
-  -d '{
-    "username": "John.Doe"
-  }'
+curl -X GET "http://localhost:8080/api/v1/trainee/profile?username=John.Doe" \
+  -H "Authorization: Bearer <jwt-token>"
 ```
 
 ## API Endpoints Summary
 
-### Implemented REST Endpoints (18 total)
+### Implemented REST Endpoints (19 total)
 
 **Trainee Management:**
 1. POST /api/v1/trainee/register - Register new trainee
@@ -361,15 +374,16 @@ curl -X GET http://localhost:8080/api/v1/trainee/profile \
 13. PATCH /api/v1/trainer/status - Activate/deactivate trainer
 
 **Authentication:**
-14. GET /api/v1/user/login - User login
+14. POST /api/v1/user/login - User login
 15. PUT /api/v1/user/change-password - Change password
+16. POST /api/v1/user/logout - Logout current token
 
 **Training Management:**
-16. POST /api/v1/training - Add new training
-17. GET /api/v1/training/types - Get training types
+17. POST /api/v1/training - Add new training
+18. GET /api/v1/training/types - Get training types
 
 **Training Type Management:**
-18. POST /api/v1/training-types - Add training type
+19. POST /api/v1/training-types - Add training type
 
 ## Key Features
 
@@ -382,7 +396,7 @@ curl -X GET http://localhost:8080/api/v1/trainee/profile \
 - **Non-idempotent Operations**: Activate/deactivate operations process even if state unchanged
 - **Cascade Delete**: Deleting a trainee cascades to their trainings
 - **Type Safety**: Proper data types (int for duration, Date for dates, Boolean for status)
-- **Constant Training Types**: Training types managed as enum constants
+- **JWT-Protected APIs**: Protected endpoints require bearer tokens and enforce username ownership
 - **Error Handling**: Comprehensive error handling with proper HTTP status codes
 - **Unit Testing**: Full test coverage across layers
 - **Transaction Logging**: Two-level logging with transaction IDs
@@ -393,7 +407,7 @@ curl -X GET http://localhost:8080/api/v1/trainee/profile \
 ### Design Decisions
 1. **No Training Updates**: Training sessions cannot be modified or deleted after creation
 2. **Trainer Specialization**: Stored as foreign key reference to `TrainingTypeEntity`
-3. **Authentication Pattern**: Login endpoint available but no automatic enforcement via filters
+3. **Authentication Pattern**: JWT-based stateless authentication with controller-level ownership checks
 4. **Hard Delete**: Trainee deletion permanently removes data and cascades to trainings
 5. **Trainer Delete**: Trainer deletion preserves associated trainings
 

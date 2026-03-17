@@ -45,14 +45,22 @@ com.exgym.training/
 #### Login
 - **Endpoint**: `POST /api/v1/user/login`
 - **Request**: LoginRequest { username, password }
-- **Response**: 200 OK
-- **Description**: Authenticate trainee or trainer
+- **Response**: LoginResponse { username, token, expiresIn }
+- **Description**: Authenticate trainee or trainer and issue JWT bearer token
 
 #### Change Password
 - **Endpoint**: `PUT /api/v1/user/change-password`
-- **Request**: ChangePasswordRequest { username, oldPassword, newPassword }
+- **Auth**: Bearer token required
+- **Request**: ChangePasswordRequest { oldPassword, newPassword }
 - **Response**: 200 OK
-- **Description**: Update user password
+- **Description**: Update the authenticated user's password
+
+#### Logout
+- **Endpoint**: `POST /api/v1/user/logout`
+- **Auth**: Bearer token required
+- **Request**: Authorization header only
+- **Response**: 200 OK
+- **Description**: Revoke the current bearer token
 
 ### 2. Trainee Management (`/api/v1/trainee`)
 
@@ -60,42 +68,51 @@ com.exgym.training/
 - **Endpoint**: `POST /api/v1/trainee/register`
 - **Request**: TraineeRegistrationRequest { firstName, lastName, dateOfBirth?, address? }
 - **Response**: RegistrationResponse { username, password }
+- **Auth**: Public endpoint
 
 #### Get Trainee Profile
 - **Endpoint**: `GET /api/v1/trainee/profile?username={username}`
+- **Auth**: Bearer token required
 - **Request**: Query parameter `username`
 - **Response**: TraineeProfileResponse
+- **Note**: `username` must match the username in the JWT subject
 
 #### Update Trainee Profile
 - **Endpoint**: `PUT /api/v1/trainee/profile`
+- **Auth**: Bearer token required
 - **Request**: UpdateTraineeProfileRequest
 - **Response**: UpdateTraineeProfileResponse
 
 #### Delete Trainee Profile
 - **Endpoint**: `DELETE /api/v1/trainee/profile`
+- **Auth**: Bearer token required
 - **Request**: GetProfileRequest { username }
 - **Response**: 200 OK
 - **Note**: Cascade deletes related trainings
 
 #### Get Not Assigned Trainers
 - **Endpoint**: `GET /api/v1/trainee/trainers/not-assigned?username={username}`
+- **Auth**: Bearer token required
 - **Request**: Query parameter `username`
 - **Response**: TrainerListResponse
-- **Note**: Returns only active trainers and validates that trainee is active
+- **Note**: Returns only active trainers, validates that trainee is active, and requires `username` to match the JWT subject
 
 #### Update Trainer List
 - **Endpoint**: `PUT /api/v1/trainee/trainers`
+- **Auth**: Bearer token required
 - **Request**: UpdateTraineeTrainerListRequest
 - **Response**: TrainerListResponse
 - **Note**: Updates many-to-many relation through owning side to persist join-table changes
 
 #### Get Trainee Trainings
 - **Endpoint**: `GET /api/v1/trainee/trainings`
+- **Auth**: Bearer token required
 - **Request**: Query params: `username` (required), `periodFrom`, `periodTo`, `trainerName`, `trainingType`
 - **Response**: TrainingListResponse
 
 #### Activate/Deactivate Trainee
 - **Endpoint**: `PATCH /api/v1/trainee/status`
+- **Auth**: Bearer token required
 - **Request**: ActivateDeactivateRequest { username, isActive }
 - **Response**: 200 OK
 - **Note**: Non-idempotent operation
@@ -107,25 +124,31 @@ com.exgym.training/
 - **Request**: TrainerRegistrationRequest { firstName, lastName, specialization }
 - **Response**: RegistrationResponse { username, password }
 - **Note**: `specialization` must exist in `training_type` table
+- **Auth**: Public endpoint
 
 #### Get Trainer Profile
 - **Endpoint**: `GET /api/v1/trainer/{username}/profile`
+- **Auth**: Bearer token required
 - **Request**: Path variable `username`
 - **Response**: TrainerProfileResponse
+- **Note**: `username` must match the username in the JWT subject
 
 #### Update Trainer Profile
 - **Endpoint**: `PUT /api/v1/trainer/profile`
+- **Auth**: Bearer token required
 - **Request**: UpdateTrainerProfileRequest
 - **Response**: UpdateTrainerProfileResponse
 - **Note**: Specialization is read-only
 
 #### Get Trainer Trainings
 - **Endpoint**: `GET /api/v1/trainer/{username}/trainings`
+- **Auth**: Bearer token required
 - **Request**: Path variable `username`; optional query params `periodFrom`, `periodTo`, `traineeName`
 - **Response**: TrainingListResponse
 
 #### Activate/Deactivate Trainer
 - **Endpoint**: `PATCH /api/v1/trainer/{username}/status?isActive={true|false}`
+- **Auth**: Bearer token required
 - **Request**: Path variable `username`, query parameter `isActive`
 - **Response**: 200 OK
 - **Note**: Non-idempotent operation
@@ -134,15 +157,18 @@ com.exgym.training/
 
 #### Add Training
 - **Endpoint**: `POST /api/v1/training`
+- **Auth**: Bearer token required
 - **Request**: AddTrainingRequest
 - **Response**: 200 OK
 - **Validation**:
   - `trainingDate` must be now/future (small clock-skew tolerance)
   - `trainingDuration` must be positive and <= 480 minutes
   - `trainingTypeName` must reference existing `training_type`
+  - Authenticated user must match either `traineeUsername` or `trainerUsername`
 
 #### Get Training Types
 - **Endpoint**: `GET /api/v1/training/types`
+- **Auth**: Bearer token required
 - **Request**: None
 - **Response**: TrainingTypeResponse
 
@@ -150,6 +176,7 @@ com.exgym.training/
 
 #### Add Training Type
 - **Endpoint**: `POST /api/v1/training-types`
+- **Auth**: Bearer token required
 - **Request**: AddTrainingTypeRequest { trainingTypeName }
 - **Response**: TrainingTypeInfo
 - **Note**: Returns 409 if type already exists
@@ -194,14 +221,16 @@ com.exgym.training/
 - OpenAPI JSON at `/v3/api-docs`
 
 ### 6. **Security Configuration**
-- Spring Security configured to permit all API endpoints
-- CSRF disabled for REST API
-- Authentication logic in service layer (as per requirements)
+- Spring Security uses stateless JWT bearer authentication
+- Public endpoints are limited to trainee registration, trainer registration, login, health, swagger, and H2 console
+- All remaining API endpoints require `Authorization: Bearer <token>`
+- CSRF is disabled for the REST API
+- Controller ownership checks return 403 when an authenticated user targets another user's resources
 
 ### 7. **Requirements Compliance**
 - ✅ Username/password auto-generation during registration
 - ✅ No dual trainer/trainee registration possible (separate endpoints)
-- ✅ Authentication endpoints implemented (`/user/login`, `/user/change-password`)
+- ✅ Authentication endpoints implemented (`/user/login`, `/user/change-password`, `/user/logout`)
 - ✅ Required validation on all endpoints
 - ✅ Username cannot be changed
 - ✅ Activate/Deactivate is non-idempotent
@@ -249,9 +278,16 @@ curl -X POST "http://localhost:8080/api/v1/user/login" \
   }'
 ```
 
+#### Get Trainee Profile
+```bash
+curl -X GET "http://localhost:8080/api/v1/trainee/profile?username=John.Doe" \
+  -H "Authorization: Bearer <jwt-token>"
+```
+
 #### Get Training Types
 ```bash
-curl -X GET "http://localhost:8080/api/v1/training/types"
+curl -X GET "http://localhost:8080/api/v1/training/types" \
+  -H "Authorization: Bearer <jwt-token>"
 ```
 
 ### 4. **Transaction ID Tracking**
@@ -296,8 +332,8 @@ mvn spring-boot:run
 
 ## Notes
 
-1. **Authentication**: Currently implemented at service layer. For production, consider JWT or OAuth2.
-2. **Database**: Configure `application.properties` with your database credentials.
+1. **Authentication**: JWT is required for protected endpoints. Only register/login and diagnostic routes are public.
+2. **Database**: Configure the profile-specific datasource properties for the environment you run.
 3. **Transaction IDs**: Clients can provide `X-Transaction-Id` header; otherwise auto-generated.
 4. **Date Format**: JSON dates should be in ISO-8601 format (e.g., "2026-01-15").
 5. **Specialization**: Trainer specialization is a foreign-key reference to `training_type` and is read-only in trainer profile update.
