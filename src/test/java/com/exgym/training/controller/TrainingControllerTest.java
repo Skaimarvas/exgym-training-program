@@ -1,16 +1,18 @@
 package com.exgym.training.controller;
 
-import com.exgym.training.dao.TrainingTypeDao;
-import com.exgym.training.dto.request.AddTrainingRequest;
-import com.exgym.training.dto.response.TrainingTypeResponse;
-import com.exgym.training.entity.Trainee;
-import com.exgym.training.entity.Trainer;
-import com.exgym.training.entity.Training;
-import com.exgym.training.entity.TrainingTypeEntity;
-import com.exgym.training.entity.User;
-import com.exgym.training.service.TraineeService;
-import com.exgym.training.service.TrainerService;
-import com.exgym.training.service.TrainingService;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.security.Principal;
+import java.util.Date;
+import java.util.Arrays;
+import java.util.Collections;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,26 +21,19 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 
-import java.util.*;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import com.exgym.training.dto.training.request.AddTrainingRequest;
+import com.exgym.training.dto.training.response.TrainingTypeResponse;
+import com.exgym.training.facade.TrainingFacade;
 
 class TrainingControllerTest {
 
     @Mock
-    private TrainingService trainingService;
+    private TrainingFacade trainingFacade;
 
     @Mock
-    private TraineeService traineeService;
-
-    @Mock
-    private TrainerService trainerService;
-
-    @Mock
-    private TrainingTypeDao trainingTypeDao;
+    private Principal principal;
 
     @InjectMocks
     private TrainingController trainingController;
@@ -49,7 +44,43 @@ class TrainingControllerTest {
     }
 
     @Test
-    void testAddTraining_Success() {
+    void testAddTraining_ByTrainee_Success() {
+        AddTrainingRequest request = new AddTrainingRequest();
+        request.setTraineeUsername("John.Doe");
+        request.setTrainerUsername("Jane.Smith");
+        request.setTrainingName("Morning Yoga");
+        request.setTrainingTypeName("YOGA");
+        request.setTrainingDate(new Date());
+        request.setTrainingDuration(60);
+
+        when(principal.getName()).thenReturn("John.Doe");
+
+        ResponseEntity<Void> response = trainingController.addTraining(request, principal);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        verify(trainingFacade, times(1)).addTraining(request);
+    }
+
+    @Test
+    void testAddTraining_ByTrainer_Success() {
+        AddTrainingRequest request = new AddTrainingRequest();
+        request.setTraineeUsername("John.Doe");
+        request.setTrainerUsername("Jane.Smith");
+        request.setTrainingName("Morning Yoga");
+        request.setTrainingTypeName("YOGA");
+        request.setTrainingDate(new Date());
+        request.setTrainingDuration(60);
+
+        when(principal.getName()).thenReturn("Jane.Smith");
+
+        ResponseEntity<Void> response = trainingController.addTraining(request, principal);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        verify(trainingFacade, times(1)).addTraining(request);
+    }
+
+    @Test
+    void testAddTraining_AccessDenied() {
         AddTrainingRequest request = new AddTrainingRequest();
         request.setTraineeUsername("John.Doe");
         request.setTrainerUsername("Jane.Smith");
@@ -57,50 +88,40 @@ class TrainingControllerTest {
         request.setTrainingDate(new Date());
         request.setTrainingDuration(60);
 
-        User traineeUser = User.builder().userName("John.Doe").build();
-        Trainee trainee = Trainee.builder().user(traineeUser).build();
-        
-        User trainerUser = User.builder().userName("Jane.Smith").build();
-        Trainer trainer = Trainer.builder().user(trainerUser).specialization("YOGA").build();
-        
-        when(traineeService.selectByUsername("John.Doe")).thenReturn(Optional.of(trainee));
-        when(trainerService.selectByUsername("Jane.Smith")).thenReturn(Optional.of(trainer));
-        when(trainingService.create(any(Trainer.class), any(Trainee.class), anyString(), 
-                anyString(), any(Date.class), anyInt())).thenReturn(new Training());
+        when(principal.getName()).thenReturn("Other.User");
 
-        ResponseEntity<Void> response = trainingController.addTraining(request);
+        assertThrows(AccessDeniedException.class, () -> {
+            trainingController.addTraining(request, principal);
+        });
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(trainingService, times(1)).create(any(Trainer.class), any(Trainee.class), 
-                anyString(), anyString(), any(Date.class), anyInt());
+        verify(trainingFacade, never()).addTraining(request);
     }
 
     @Test
     void testGetTrainingTypes_Success() {
-        TrainingTypeEntity type1 = new TrainingTypeEntity(1L, "YOGA");
-        TrainingTypeEntity type2 = new TrainingTypeEntity(2L, "CARDIO");
-        TrainingTypeEntity type3 = new TrainingTypeEntity(3L, "STRENGTH");
-
-        when(trainingTypeDao.findAll())
-                .thenReturn(Arrays.asList(type1, type2, type3));
+        when(trainingFacade.getTrainingTypes())
+            .thenReturn(new TrainingTypeResponse(Arrays.asList(
+                new TrainingTypeResponse.TrainingTypeInfo("YOGA", 1),
+                new TrainingTypeResponse.TrainingTypeInfo("CARDIO", 2),
+                new TrainingTypeResponse.TrainingTypeInfo("STRENGTH", 3))));
 
         ResponseEntity<TrainingTypeResponse> response = trainingController.getTrainingTypes();
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
         assertEquals(3, response.getBody().getTrainingTypes().size());
-        verify(trainingTypeDao, times(1)).findAll();
+        verify(trainingFacade, times(1)).getTrainingTypes();
     }
 
     @Test
     void testGetTrainingTypes_EmptyList() {
-        when(trainingTypeDao.findAll()).thenReturn(Collections.emptyList());
+        when(trainingFacade.getTrainingTypes()).thenReturn(new TrainingTypeResponse(Collections.emptyList()));
 
         ResponseEntity<TrainingTypeResponse> response = trainingController.getTrainingTypes();
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
         assertTrue(response.getBody().getTrainingTypes().isEmpty());
-        verify(trainingTypeDao, times(1)).findAll();
+        verify(trainingFacade, times(1)).getTrainingTypes();
     }
 }

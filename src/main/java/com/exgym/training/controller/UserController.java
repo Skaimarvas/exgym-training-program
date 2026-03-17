@@ -1,16 +1,20 @@
 package com.exgym.training.controller;
 
+import java.security.Principal;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestHeader;
 
 import com.exgym.training.dto.user.request.ChangePasswordRequest;
 import com.exgym.training.dto.user.request.LoginRequest;
-import com.exgym.training.exception.InvalidCredentialsException;
+import com.exgym.training.dto.user.response.LoginResponse;
 import com.exgym.training.service.UserService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -39,18 +43,12 @@ public class UserController {
         @ApiResponse(responseCode = "401", description = "Invalid credentials")
     })
     @PostMapping("/login")
-    public ResponseEntity<Void> login(@Valid @RequestBody LoginRequest request) {
+    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         log.debug("Login attempt for username: {}", request.getUsername());
-        
-        boolean authenticated = userService.authenticate(request.getUsername(), request.getPassword());
-        
-        if (!authenticated) {
-            log.warn("Failed login attempt for username: {}", request.getUsername());
-            throw new InvalidCredentialsException("Invalid username or password");
-        }
-        
+
+        LoginResponse response = userService.login(request.getUsername(), request.getPassword());
         log.info("Successful login for username: {}", request.getUsername());
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(response);
     }
 
     @Operation(summary = "Change password", description = "Change user password by providing old and new passwords")
@@ -60,11 +58,33 @@ public class UserController {
         @ApiResponse(responseCode = "404", description = "User not found")
     })
     @PutMapping("/change-password")
-    public ResponseEntity<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
-        log.debug("Password change request for username: {}", request.getUsername());
-        userService.changePassword(request.getUsername(), request.getOldPassword(), request.getNewPassword());
-        log.info("Password changed successfully for user: {}", request.getUsername());
+    public ResponseEntity<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request, Principal principal) {
+        log.debug("Password change request for username: {}", principal.getName());
+        userService.changePassword(principal.getName(), request.getOldPassword(), request.getNewPassword());
+        log.info("Password changed successfully for user: {}", principal.getName());
         return ResponseEntity.ok().build();
+    }
+
+    @Operation(summary = "User logout", description = "Invalidate the current bearer token")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Logout successful"),
+        @ApiResponse(responseCode = "401", description = "Authentication required")
+    })
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(@RequestHeader("Authorization") String authorizationHeader,
+            Authentication authentication) {
+        String token = extractBearerToken(authorizationHeader);
+        log.debug("Logout request for username: {}", authentication.getName());
+        userService.logout(token);
+        log.info("Logout successful for user: {}", authentication.getName());
+        return ResponseEntity.ok().build();
+    }
+
+    private String extractBearerToken(String authorizationHeader) {
+        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
+            throw new org.springframework.security.access.AccessDeniedException("Bearer token is required");
+        }
+        return authorizationHeader.substring(7);
     }
 }
 

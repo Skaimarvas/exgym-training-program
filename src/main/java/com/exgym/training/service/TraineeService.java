@@ -9,6 +9,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.exgym.training.config.metrics.TrainingMetrics;
@@ -33,14 +34,19 @@ public class TraineeService {
     private final TrainerDao trainerDao;
     private final UserDao userDao;
     private final CredentialsGenerator credentialsGenerator;
+    private final PasswordEncoder passwordEncoder;
+    private final TrainingMetrics trainingMetrics;
 
     @Autowired
     public TraineeService(TraineeDao traineeDao, TrainerDao trainerDao, UserDao userDao,
-            CredentialsGenerator credentialsGenerator) {
+            CredentialsGenerator credentialsGenerator, PasswordEncoder passwordEncoder,
+            TrainingMetrics trainingMetrics) {
         this.traineeDao = traineeDao;
         this.trainerDao = trainerDao;
         this.userDao = userDao;
         this.credentialsGenerator = credentialsGenerator;
+        this.passwordEncoder = passwordEncoder;
+        this.trainingMetrics = trainingMetrics;
     }
 
     public Optional<Trainee> selectByUsername(String userName) {
@@ -95,17 +101,30 @@ public class TraineeService {
     }
 
     public Trainee create(String firstName, String lastName, String address, Date dateOfBirth) {
+        String rawPassword = credentialsGenerator.generatePassword();
+        return createInternal(firstName, lastName, address, dateOfBirth, rawPassword);
+    }
+
+    public GeneratedCredentials register(String firstName, String lastName, String address, Date dateOfBirth) {
+        String rawPassword = credentialsGenerator.generatePassword();
+        Trainee trainee = createInternal(firstName, lastName, address, dateOfBirth, rawPassword);
+        trainingMetrics.incrementTraineeRegistration();
+        return new GeneratedCredentials(trainee.getUser().getUserName(), rawPassword);
+    }
+
+    private Trainee createInternal(String firstName, String lastName, String address, Date dateOfBirth,
+            String rawPassword) {
         log.info("Creating trainee profile for {} {}", firstName, lastName);
         
         validateNames(firstName, lastName);
-        User user = createUser(firstName, lastName);
+        User user = createUser(firstName, lastName, rawPassword);
         Trainee trainee = buildTrainee(user, address, dateOfBirth);
         
         validateTraineeFields(trainee);
-        traineeDao.save(trainee);
+        Trainee savedTrainee = traineeDao.save(trainee);
         
         log.info("Trainee created successfully: {}", user.getUserName());
-        return trainee;
+        return savedTrainee;
     }
 
     private void validateNames(String firstName, String lastName) {
@@ -114,17 +133,16 @@ public class TraineeService {
         }
     }
 
-    private User createUser(String firstName, String lastName) {
+    private User createUser(String firstName, String lastName, String rawPassword) {
         Map<Long, User> existingUsers = userDao.findAll().stream()
             .collect(Collectors.toMap(User::getId, user -> user));
         String username = credentialsGenerator.generateUsername(firstName, lastName, existingUsers);
-        String password = credentialsGenerator.generatePassword();
         
         return User.builder()
                 .firstName(firstName)
                 .lastName(lastName)
                 .userName(username)
-                .password(password)
+                .password(passwordEncoder.encode(rawPassword))
                 .isActive(true)
                 .build();
     }

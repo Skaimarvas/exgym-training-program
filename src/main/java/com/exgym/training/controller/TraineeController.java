@@ -1,5 +1,6 @@
 package com.exgym.training.controller;
 
+import java.security.Principal;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -7,6 +8,7 @@ import java.util.HashSet;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -38,6 +40,7 @@ import com.exgym.training.exception.ValidationException;
 import com.exgym.training.service.TraineeService;
 import com.exgym.training.service.TrainerService;
 import com.exgym.training.service.TrainingService;
+import com.exgym.training.service.GeneratedCredentials;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -72,20 +75,20 @@ public class TraineeController {
     @PostMapping("/register")
     public ResponseEntity<RegistrationResponse> registerTrainee(@Valid @RequestBody TraineeRegistrationRequest request) {
         log.debug("Registering new trainee: {} {}", request.getFirstName(), request.getLastName());
-        
-        Trainee trainee = traineeService.create(
+
+        GeneratedCredentials credentials = traineeService.register(
             request.getFirstName(),
             request.getLastName(),
             request.getAddress(),
             request.getDateOfBirth()
         );
-        
+
         RegistrationResponse response = new RegistrationResponse(
-            trainee.getUser().getUserName(),
-            trainee.getUser().getPassword()
+            credentials.username(),
+            credentials.password()
         );
-        
-        log.info("Trainee registered successfully with username: {}", trainee.getUser().getUserName());
+
+        log.info("Trainee registered successfully with username: {}", credentials.username());
         return ResponseEntity.ok(response);
     }
 
@@ -95,7 +98,8 @@ public class TraineeController {
         @ApiResponse(responseCode = "404", description = "Trainee not found")
     })
     @GetMapping("/profile")
-    public ResponseEntity<TraineeProfileResponse> getTraineeProfile(@RequestParam String username) {
+    public ResponseEntity<TraineeProfileResponse> getTraineeProfile(@RequestParam String username, Principal principal) {
+        ensureCurrentUser(username, principal);
         log.debug("Fetching profile for trainee: {}", username);
         
         Trainee trainee = traineeService.selectProfileByUsername(username)
@@ -112,7 +116,8 @@ public class TraineeController {
     })
     @PutMapping("/profile")
     public ResponseEntity<UpdateTraineeProfileResponse> updateTraineeProfile(
-            @Valid @RequestBody UpdateTraineeProfileRequest request) {
+            @Valid @RequestBody UpdateTraineeProfileRequest request, Principal principal) {
+        ensureCurrentUser(request.getUsername(), principal);
         log.debug("Updating profile for trainee: {}", request.getUsername());
         
         Trainee updatedTrainee = traineeService.updateProfile(
@@ -135,7 +140,8 @@ public class TraineeController {
         @ApiResponse(responseCode = "404", description = "Trainee not found")
     })
     @DeleteMapping("/profile")
-    public ResponseEntity<Void> deleteTraineeProfile(@Valid @RequestBody GetProfileRequest request) {
+    public ResponseEntity<Void> deleteTraineeProfile(@Valid @RequestBody GetProfileRequest request, Principal principal) {
+        ensureCurrentUser(request.getUsername(), principal);
         log.debug("Deleting profile for trainee: {}", request.getUsername());
         traineeService.deleteByUsernameWithBusinessLogic(request.getUsername());
         log.info("Profile deleted successfully for trainee: {}", request.getUsername());
@@ -148,7 +154,8 @@ public class TraineeController {
         @ApiResponse(responseCode = "404", description = "Trainee not found")
     })
     @GetMapping("/trainers/not-assigned")
-    public ResponseEntity<TrainerListResponse> getNotAssignedTrainers(@RequestParam String username) {
+    public ResponseEntity<TrainerListResponse> getNotAssignedTrainers(@RequestParam String username, Principal principal) {
+        ensureCurrentUser(username, principal);
         log.debug("Fetching not assigned trainers for trainee: {}", username);
 
         Trainee trainee = traineeService.selectByUsername(username)
@@ -180,7 +187,8 @@ public class TraineeController {
     })
     @PutMapping("/trainers")
     public ResponseEntity<TrainerListResponse> updateTrainerList(
-            @Valid @RequestBody UpdateTraineeTrainerListRequest request) {
+            @Valid @RequestBody UpdateTraineeTrainerListRequest request, Principal principal) {
+        ensureCurrentUser(request.getTraineeUsername(), principal);
         log.debug("Updating trainer list for trainee: {}", request.getTraineeUsername());
 
         Trainee updatedTrainee = traineeService.updateTrainersList(
@@ -213,7 +221,9 @@ public class TraineeController {
             @RequestParam(required = false) Date periodFrom,
             @RequestParam(required = false) Date periodTo,
             @RequestParam(required = false) String trainerName,
-            @RequestParam(required = false) String trainingType) {
+            @RequestParam(required = false) String trainingType,
+            Principal principal) {
+        ensureCurrentUser(username, principal);
         log.debug("Fetching trainings for trainee: {}", username);
 
         traineeService.selectByUsername(username)
@@ -248,7 +258,8 @@ public class TraineeController {
         @ApiResponse(responseCode = "404", description = "Trainee not found")
     })
     @PatchMapping("/status")
-    public ResponseEntity<Void> updateTraineeStatus(@Valid @RequestBody ActivateDeactivateRequest request) {
+    public ResponseEntity<Void> updateTraineeStatus(@Valid @RequestBody ActivateDeactivateRequest request, Principal principal) {
+        ensureCurrentUser(request.getUsername(), principal);
         log.debug("Updating status for trainee: {} to {}", request.getUsername(), request.getIsActive());
         traineeService.updateStatus(request.getUsername(), request.getIsActive());
         return ResponseEntity.ok().build();
@@ -297,5 +308,11 @@ public class TraineeController {
 
     private Set<Trainer> safeTrainerSet(Trainee trainee) {
         return trainee.getTrainers() == null ? Set.of() : trainee.getTrainers();
+    }
+
+    private void ensureCurrentUser(String username, Principal principal) {
+        if (principal == null || !principal.getName().equals(username)) {
+            throw new AccessDeniedException("Authenticated user cannot access another trainee profile");
+        }
     }
 }

@@ -21,7 +21,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
+import com.exgym.training.config.metrics.TrainingMetrics;
 import com.exgym.training.dao.TrainerDao;
 import com.exgym.training.dao.TrainingTypeDao;
 import com.exgym.training.dao.UserDao;
@@ -30,7 +32,6 @@ import com.exgym.training.entity.TrainingTypeEntity;
 import com.exgym.training.entity.User;
 import com.exgym.training.exception.ResourceNotFoundException;
 import com.exgym.training.util.CredentialsGenerator;
-import com.exgym.training.config.metrics.TrainingMetrics;
 
 @ExtendWith(MockitoExtension.class)
 class TrainerServiceTest {
@@ -47,13 +48,19 @@ class TrainerServiceTest {
     @Mock
     private CredentialsGenerator credentialsGenerator;
 
+    @Mock
+    private PasswordEncoder passwordEncoder;
+
+    @Mock
+    private TrainingMetrics trainingMetrics;
+
     private TrainerService trainerService;
 
     private Trainer testTrainer;
 
     @BeforeEach
     void setUp() {
-        trainerService = new TrainerService(trainerDao, trainingTypeDao, userDao, credentialsGenerator);
+        trainerService = new TrainerService(trainerDao, trainingTypeDao, userDao, credentialsGenerator, passwordEncoder, trainingMetrics);
         TrainingTypeEntity yogaType = new TrainingTypeEntity(1L, "YOGA");
         User user = User.builder()
                 .firstName("Jane")
@@ -74,6 +81,8 @@ class TrainerServiceTest {
                 .thenReturn("Jane.Smith");
         lenient().when(credentialsGenerator.generatePassword())
                 .thenReturn("pass789012");
+        lenient().when(passwordEncoder.encode(any())).thenReturn("encoded-password");
+        lenient().when(trainerDao.save(any(Trainer.class))).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     @Test
@@ -87,8 +96,7 @@ class TrainerServiceTest {
         assertEquals("Jane", created.getUser().getFirstName());
         assertEquals("Smith", created.getUser().getLastName());
         assertEquals("Jane.Smith", created.getUser().getUserName());
-        assertNotNull(created.getUser().getPassword());
-        assertEquals(10, created.getUser().getPassword().length());
+        assertEquals("encoded-password", created.getUser().getPassword());
         assertTrue(created.getUser().getIsActive());
         verify(trainerDao, times(1)).save(any(Trainer.class));
     }

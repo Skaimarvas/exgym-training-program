@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -16,6 +17,7 @@ import org.springframework.web.servlet.NoHandlerFoundException;
 
 import com.exgym.training.dto.common.response.ErrorResponse;
 import com.exgym.training.exception.AlreadyExistsException;
+import com.exgym.training.exception.AccountLockedException;
 import com.exgym.training.exception.InvalidCredentialsException;
 import com.exgym.training.exception.ResourceNotFoundException;
 import com.exgym.training.exception.ValidationException;
@@ -61,6 +63,23 @@ public class GlobalExceptionHandler {
         
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
     }
+
+        @ExceptionHandler(AccountLockedException.class)
+        public ResponseEntity<ErrorResponse> handleAccountLockedException(
+                        AccountLockedException ex, HttpServletRequest request) {
+                log.error("Account locked: {}", ex.getMessage());
+
+                ErrorResponse error = ErrorResponse.builder()
+                                .timestamp(LocalDateTime.now())
+                                .status(HttpStatus.TOO_MANY_REQUESTS.value())
+                                .error("Too Many Requests")
+                                .message(ex.getMessage())
+                                .path(request.getRequestURI())
+                                .transactionId(TransactionContext.getTransactionId())
+                                .build();
+
+                return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(error);
+        }
 
     @ExceptionHandler(AlreadyExistsException.class)
     public ResponseEntity<ErrorResponse> handleAlreadyExistsException(
@@ -219,6 +238,23 @@ public class GlobalExceptionHandler {
         
         return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(error);
     }
+
+        @ExceptionHandler(AccessDeniedException.class)
+        public ResponseEntity<ErrorResponse> handleAccessDeniedException(
+                        AccessDeniedException ex, HttpServletRequest request) {
+                log.error("Access denied: {}", ex.getMessage());
+
+                ErrorResponse error = ErrorResponse.builder()
+                                .timestamp(LocalDateTime.now())
+                                .status(HttpStatus.FORBIDDEN.value())
+                                .error("Forbidden")
+                                .message(ex.getMessage())
+                                .path(request.getRequestURI())
+                                .transactionId(TransactionContext.getTransactionId())
+                                .build();
+
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
+        }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenericException(

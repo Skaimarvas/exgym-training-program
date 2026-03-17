@@ -1,10 +1,7 @@
 package com.exgym.training.controller;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,91 +10,58 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 
-import com.exgym.training.dto.request.ChangePasswordRequest;
-import com.exgym.training.dto.request.LoginRequest;
-import com.exgym.training.entity.Trainee;
-import com.exgym.training.entity.Trainer;
-import com.exgym.training.entity.User;
+import com.exgym.training.dto.user.request.ChangePasswordRequest;
+import com.exgym.training.dto.user.request.LoginRequest;
+import com.exgym.training.dto.user.response.LoginResponse;
 import com.exgym.training.exception.InvalidCredentialsException;
-import com.exgym.training.service.TraineeService;
-import com.exgym.training.service.TrainerService;
+import com.exgym.training.service.UserService;
+
+import java.security.Principal;
 
 class UserControllerTest {
 
     @Mock
-    private TraineeService traineeService;
+    private UserService userService;
 
     @Mock
-    private TrainerService trainerService;
+    private Principal principal;
+
+    @Mock
+    private Authentication authentication;
 
     @InjectMocks
     private UserController userController;
 
-    private User traineeUser;
-    private User trainerUser;
-    private Trainee trainee;
-    private Trainer trainer;
+    private LoginResponse loginResponse;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-
-        traineeUser = User.builder()
-                .userName("John.Doe")
-                .password("password123")
-                .firstName("John")
-                .lastName("Doe")
-                .isActive(true)
-                .build();
-
-        trainee = Trainee.builder()
-                .id(1L)
-                .user(traineeUser)
-                .build();
-
-        trainerUser = User.builder()
-                .userName("Jane.Smith")
-                .password("password456")
-                .firstName("Jane")
-                .lastName("Smith")
-                .isActive(true)
-                .build();
-
-        trainer = Trainer.builder()
-                .id(1L)
-                .user(trainerUser)
-                .build();
+        
+        loginResponse = new LoginResponse();
+        loginResponse.setUsername("John.Doe");
+        loginResponse.setToken("jwt_token_here");
+        loginResponse.setExpiresIn(3600000L);
     }
 
     @Test
-    void testLogin_TraineeSuccess() {
+    void testLogin_Success() {
         LoginRequest request = new LoginRequest();
         request.setUsername("John.Doe");
         request.setPassword("password123");
 
-        when(traineeService.authenticate("John.Doe", "password123")).thenReturn(true);
+        when(userService.login("John.Doe", "password123")).thenReturn(loginResponse);
 
-        ResponseEntity<Void> response = userController.login(request);
-
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(traineeService, times(1)).authenticate("John.Doe", "password123");
-    }
-
-    @Test
-    void testLogin_TrainerSuccess() {
-        LoginRequest request = new LoginRequest();
-        request.setUsername("Jane.Smith");
-        request.setPassword("password456");
-
-        when(traineeService.authenticate("Jane.Smith", "password456")).thenReturn(false);
-        when(trainerService.authenticate("Jane.Smith", "password456")).thenReturn(true);
-
-        ResponseEntity<Void> response = userController.login(request);
+        ResponseEntity<LoginResponse> response = userController.login(request);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(traineeService, times(1)).authenticate("Jane.Smith", "password456");
-        verify(trainerService, times(1)).authenticate("Jane.Smith", "password456");
+        assertNotNull(response.getBody());
+        assertEquals("John.Doe", response.getBody().getUsername());
+        assertEquals("jwt_token_here", response.getBody().getToken());
+        assertEquals(3600000L, response.getBody().getExpiresIn());
+        verify(userService, times(1)).login("John.Doe", "password123");
     }
 
     @Test
@@ -106,15 +70,14 @@ class UserControllerTest {
         request.setUsername("John.Doe");
         request.setPassword("wrongpassword");
 
-        when(traineeService.authenticate("John.Doe", "wrongpassword")).thenReturn(false);
-        when(trainerService.authenticate("John.Doe", "wrongpassword")).thenReturn(false);
+        when(userService.login("John.Doe", "wrongpassword"))
+                .thenThrow(new InvalidCredentialsException("Invalid credentials"));
 
         assertThrows(InvalidCredentialsException.class, () -> {
             userController.login(request);
         });
 
-        verify(traineeService, times(1)).authenticate("John.Doe", "wrongpassword");
-        verify(trainerService, times(1)).authenticate("John.Doe", "wrongpassword");
+        verify(userService, times(1)).login("John.Doe", "wrongpassword");
     }
 
     @Test
@@ -123,87 +86,69 @@ class UserControllerTest {
         request.setUsername("NonExistent.User");
         request.setPassword("password123");
 
-        when(traineeService.authenticate("NonExistent.User", "password123")).thenReturn(false);
-        when(trainerService.authenticate("NonExistent.User", "password123")).thenReturn(false);
+        when(userService.login("NonExistent.User", "password123"))
+                .thenThrow(new InvalidCredentialsException("Invalid credentials"));
 
         assertThrows(InvalidCredentialsException.class, () -> {
             userController.login(request);
         });
 
-        verify(traineeService, times(1)).authenticate("NonExistent.User", "password123");
-        verify(trainerService, times(1)).authenticate("NonExistent.User", "password123");
+        verify(userService, times(1)).login("NonExistent.User", "password123");
     }
 
     @Test
-    void testChangePassword_TraineeSuccess() {
+    void testChangePassword_Success() {
         ChangePasswordRequest request = new ChangePasswordRequest();
-        request.setUsername("John.Doe");
         request.setOldPassword("password123");
         request.setNewPassword("newpassword456");
 
-        when(traineeService.changePassword("John.Doe", "password123", "newpassword456")).thenReturn(trainee);
+        when(principal.getName()).thenReturn("John.Doe");
+        doNothing().when(userService).changePassword("John.Doe", "password123", "newpassword456");
 
-        ResponseEntity<Void> response = userController.changePassword(request);
-
-        assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(traineeService, times(1)).changePassword("John.Doe", "password123", "newpassword456");
-    }
-
-    @Test
-    void testChangePassword_TrainerSuccess() {
-        ChangePasswordRequest request = new ChangePasswordRequest();
-        request.setUsername("Jane.Smith");
-        request.setOldPassword("password456");
-        request.setNewPassword("newpassword789");
-
-        when(traineeService.changePassword("Jane.Smith", "password456", "newpassword789"))
-                .thenThrow(new InvalidCredentialsException("Not a trainee"));
-        when(trainerService.changePassword("Jane.Smith", "password456", "newpassword789")).thenReturn(trainer);
-
-        ResponseEntity<Void> response = userController.changePassword(request);
+        ResponseEntity<Void> response = userController.changePassword(request, principal);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(traineeService, times(1)).changePassword("Jane.Smith", "password456", "newpassword789");
-        verify(trainerService, times(1)).changePassword("Jane.Smith", "password456", "newpassword789");
+        verify(userService, times(1)).changePassword("John.Doe", "password123", "newpassword456");
     }
 
     @Test
     void testChangePassword_InvalidOldPassword() {
         ChangePasswordRequest request = new ChangePasswordRequest();
-        request.setUsername("John.Doe");
         request.setOldPassword("wrongpassword");
         request.setNewPassword("newpassword456");
 
-        when(traineeService.changePassword("John.Doe", "wrongpassword", "newpassword456"))
-                .thenThrow(new InvalidCredentialsException("Invalid password"));
-        when(trainerService.changePassword("John.Doe", "wrongpassword", "newpassword456"))
-                .thenThrow(new InvalidCredentialsException("Invalid password"));
+        when(principal.getName()).thenReturn("John.Doe");
+        doThrow(new InvalidCredentialsException("Invalid old password"))
+                .when(userService).changePassword("John.Doe", "wrongpassword", "newpassword456");
 
         assertThrows(InvalidCredentialsException.class, () -> {
-            userController.changePassword(request);
+            userController.changePassword(request, principal);
         });
 
-        verify(traineeService, times(1)).changePassword("John.Doe", "wrongpassword", "newpassword456");
-        verify(trainerService, times(1)).changePassword("John.Doe", "wrongpassword", "newpassword456");
+        verify(userService, times(1)).changePassword("John.Doe", "wrongpassword", "newpassword456");
     }
 
     @Test
-    void testChangePassword_UserNotFound() {
-        ChangePasswordRequest request = new ChangePasswordRequest();
-        request.setUsername("NonExistent.User");
-        request.setOldPassword("password123");
-        request.setNewPassword("newpassword456");
+    void testLogout_Success() {
+        when(authentication.getName()).thenReturn("John.Doe");
+        doNothing().when(userService).logout("jwt_token_here");
 
-        when(traineeService.changePassword("NonExistent.User", "password123", "newpassword456"))
-                .thenThrow(new InvalidCredentialsException("User not found"));
-        when(trainerService.changePassword("NonExistent.User", "password123", "newpassword456"))
-                .thenThrow(new InvalidCredentialsException("User not found"));
+        ResponseEntity<Void> response = userController.logout("Bearer jwt_token_here", authentication);
+
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        verify(userService, times(1)).logout("jwt_token_here");
+    }
+
+    @Test
+    void testLogout_InvalidToken() {
+        when(authentication.getName()).thenReturn("John.Doe");
+        doThrow(new InvalidCredentialsException("Invalid token"))
+                .when(userService).logout("invalid_token");
 
         assertThrows(InvalidCredentialsException.class, () -> {
-            userController.changePassword(request);
+            userController.logout("Bearer invalid_token", authentication);
         });
 
-        verify(traineeService, times(1)).changePassword("NonExistent.User", "password123", "newpassword456");
-        verify(trainerService, times(1)).changePassword("NonExistent.User", "password123", "newpassword456");
+        verify(userService, times(1)).logout("invalid_token");
     }
 }

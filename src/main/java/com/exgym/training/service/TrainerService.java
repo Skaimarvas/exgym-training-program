@@ -6,6 +6,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.exgym.training.config.metrics.TrainingMetrics;
@@ -30,14 +31,19 @@ public class TrainerService {
     private final TrainingTypeDao trainingTypeDao;
     private final UserDao userDao;
     private final CredentialsGenerator credentialsGenerator;
+    private final PasswordEncoder passwordEncoder;
+    private final TrainingMetrics trainingMetrics;
 
     @Autowired
     public TrainerService(TrainerDao trainerDao, TrainingTypeDao trainingTypeDao, UserDao userDao,
-            CredentialsGenerator credentialsGenerator) {
+            CredentialsGenerator credentialsGenerator, PasswordEncoder passwordEncoder,
+            TrainingMetrics trainingMetrics) {
         this.trainerDao = trainerDao;
         this.trainingTypeDao = trainingTypeDao;
         this.userDao = userDao;
         this.credentialsGenerator = credentialsGenerator;
+        this.passwordEncoder = passwordEncoder;
+        this.trainingMetrics = trainingMetrics;
     }
 
     public Optional<Trainer> selectByUsername(String userName) {
@@ -94,20 +100,32 @@ public class TrainerService {
     }
 
     public Trainer create(String firstName, String lastName, String specialization) {
+        String rawPassword = credentialsGenerator.generatePassword();
+        return createInternal(firstName, lastName, specialization, rawPassword);
+    }
+
+    public GeneratedCredentials register(String firstName, String lastName, String specialization) {
+        String rawPassword = credentialsGenerator.generatePassword();
+        Trainer trainer = createInternal(firstName, lastName, specialization, rawPassword);
+        trainingMetrics.incrementTrainerRegistration();
+        return new GeneratedCredentials(trainer.getUser().getUserName(), rawPassword);
+    }
+
+    private Trainer createInternal(String firstName, String lastName, String specialization, String rawPassword) {
         log.info("Creating trainer profile for {} {}", firstName, lastName);
         
         validateNames(firstName, lastName);
         validateSpecialization(specialization);
         
         TrainingTypeEntity specializationType = findTrainingType(specialization);
-        User user = createUser(firstName, lastName);
+        User user = createUser(firstName, lastName, rawPassword);
         Trainer trainer = buildTrainer(user, specializationType);
         
         validateTrainerFields(trainer);
-        trainerDao.save(trainer);
+        Trainer savedTrainer = trainerDao.save(trainer);
         
         log.info("Trainer created successfully: {}", user.getUserName());
-        return trainer;
+        return savedTrainer;
     }
 
     private void validateNames(String firstName, String lastName) {
@@ -128,17 +146,16 @@ public class TrainerService {
                 .orElseThrow(() -> new ResourceNotFoundException("TrainingType", "name", specialization)));
     }
 
-    private User createUser(String firstName, String lastName) {
+    private User createUser(String firstName, String lastName, String rawPassword) {
         Map<Long, User> existingUsers = userDao.findAll().stream()
             .collect(Collectors.toMap(User::getId, user -> user));
         String username = credentialsGenerator.generateUsername(firstName, lastName, existingUsers);
-        String password = credentialsGenerator.generatePassword();
         
         return User.builder()
                 .firstName(firstName)
                 .lastName(lastName)
                 .userName(username)
-                .password(password)
+                .password(passwordEncoder.encode(rawPassword))
                 .isActive(true)
                 .build();
     }

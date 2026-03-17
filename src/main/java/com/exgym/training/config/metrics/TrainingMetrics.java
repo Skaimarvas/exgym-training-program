@@ -19,10 +19,12 @@ public class TrainingMetrics {
     private final Counter trainingCreationCounter;
     private final Counter authenticationSuccessCounter;
     private final Counter authenticationFailureCounter;
+    private final Counter authenticationLockoutCounter;
+    private final Counter logoutCounter;
     private final Timer trainingOperationTimer;
 
     public TrainingMetrics(MeterRegistry meterRegistry) {
-        // Registration counters
+   
         this.traineeRegistrationCounter = Counter.builder("exgym.trainee.registration")
             .description("Total number of trainee registrations")
             .tag("type", "registration")
@@ -38,7 +40,7 @@ public class TrainingMetrics {
             .tag("type", "training")
             .register(meterRegistry);
 
-        // Authentication counters
+   
         this.authenticationSuccessCounter = Counter.builder("exgym.authentication.success")
             .description("Total number of successful authentications")
             .tag("result", "success")
@@ -49,7 +51,17 @@ public class TrainingMetrics {
             .tag("result", "failure")
             .register(meterRegistry);
 
-        // Operation timer
+        this.authenticationLockoutCounter = Counter.builder("exgym.authentication.lockout")
+            .description("Total number of login lockouts")
+            .tag("result", "locked")
+            .register(meterRegistry);
+
+        this.logoutCounter = Counter.builder("exgym.authentication.logout")
+            .description("Total number of logout operations")
+            .tag("result", "logout")
+            .register(meterRegistry);
+
+    
         this.trainingOperationTimer = Timer.builder("exgym.training.operation.duration")
             .description("Time taken for training operations")
             .tag("operation", "training")
@@ -74,6 +86,14 @@ public class TrainingMetrics {
 
     public void incrementAuthenticationFailure() {
         authenticationFailureCounter.increment();
+    }
+
+    public void incrementAuthenticationLockout() {
+        authenticationLockoutCounter.increment();
+    }
+
+    public void incrementLogout() {
+        logoutCounter.increment();
     }
 
     public Timer.Sample startTimer() {

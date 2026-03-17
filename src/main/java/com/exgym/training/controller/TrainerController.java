@@ -1,5 +1,6 @@
 package com.exgym.training.controller;
 
+import java.security.Principal;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
@@ -7,6 +8,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -29,6 +31,7 @@ import com.exgym.training.entity.Trainer;
 import com.exgym.training.exception.ResourceNotFoundException;
 import com.exgym.training.service.TrainerService;
 import com.exgym.training.service.TrainingService;
+import com.exgym.training.service.GeneratedCredentials;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -62,16 +65,16 @@ public class TrainerController {
             @Valid @RequestBody TrainerRegistrationRequest request) {
         log.debug("Registering new trainer: {} {}", request.getFirstName(), request.getLastName());
 
-        Trainer trainer = trainerService.create(
+        GeneratedCredentials credentials = trainerService.register(
                 request.getFirstName(),
                 request.getLastName(),
                 request.getSpecialization());
 
         RegistrationResponse response = new RegistrationResponse(
-                trainer.getUser().getUserName(),
-                trainer.getUser().getPassword());
+                credentials.username(),
+                credentials.password());
 
-        log.info("Trainer registered successfully with username: {}", trainer.getUser().getUserName());
+        log.info("Trainer registered successfully with username: {}", credentials.username());
         return ResponseEntity.ok(response);
     }
 
@@ -81,7 +84,8 @@ public class TrainerController {
             @ApiResponse(responseCode = "404", description = "Trainer not found")
     })
     @GetMapping("/{username}/profile")
-    public ResponseEntity<TrainerProfileResponse> getTrainerProfile(@PathVariable String username) {
+        public ResponseEntity<TrainerProfileResponse> getTrainerProfile(@PathVariable String username, Principal principal) {
+                ensureCurrentUser(username, principal);
         log.debug("Fetching profile for trainer: {}", username);
 
                 Trainer trainer = trainerService.selectProfileByUsername(username)
@@ -98,7 +102,8 @@ public class TrainerController {
     })
     @PutMapping("/profile")
     public ResponseEntity<UpdateTrainerProfileResponse> updateTrainerProfile(
-            @Valid @RequestBody UpdateTrainerProfileRequest request) {
+                        @Valid @RequestBody UpdateTrainerProfileRequest request, Principal principal) {
+                ensureCurrentUser(request.getUsername(), principal);
         log.debug("Updating profile for trainer: {}", request.getUsername());
 
         Trainer updatedTrainer = trainerService.updateProfile(
@@ -123,7 +128,9 @@ public class TrainerController {
             @PathVariable String username,
             @RequestParam(required = false) Date periodFrom,
             @RequestParam(required = false) Date periodTo,
-            @RequestParam(required = false) String traineeName) {
+                        @RequestParam(required = false) String traineeName,
+                        Principal principal) {
+                ensureCurrentUser(username, principal);
         log.debug("Fetching trainings for trainer: {}", username);
 
         trainerService.selectByUsername(username)
@@ -158,7 +165,9 @@ public class TrainerController {
     @PatchMapping("/{username}/status")
     public ResponseEntity<Void> updateTrainerStatus(
             @PathVariable String username,
-            @RequestParam Boolean isActive) {
+                        @RequestParam Boolean isActive,
+                        Principal principal) {
+                ensureCurrentUser(username, principal);
         log.debug("Updating status for trainer: {} to {}", username, isActive);
         trainerService.updateStatus(username, isActive);
         return ResponseEntity.ok().build();
@@ -199,5 +208,11 @@ public class TrainerController {
 
         private Set<Trainee> safeTraineeSet(Trainer trainer) {
                 return trainer.getTrainees() == null ? Set.of() : trainer.getTrainees();
+        }
+
+        private void ensureCurrentUser(String username, Principal principal) {
+                if (principal == null || !principal.getName().equals(username)) {
+                        throw new AccessDeniedException("Authenticated user cannot access another trainer profile");
+                }
         }
 }

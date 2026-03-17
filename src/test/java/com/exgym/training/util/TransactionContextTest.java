@@ -91,4 +91,10 @@ public class TransactionContextTest {
         // Verify
         assertEquals(uuid, TransactionContext.getTransactionId());
     }
+
+    @Test
+    void testTransactionContextCanBeInstantiated() {
+        TransactionContext context = new TransactionContext();
+        assertNotNull(context);
+    }
 }

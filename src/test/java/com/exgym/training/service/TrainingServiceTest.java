@@ -18,6 +18,7 @@ import com.exgym.training.dao.TrainingDao;
 import com.exgym.training.dao.TrainingTypeDao;
 import com.exgym.training.dao.TraineeDao;
 import com.exgym.training.entity.*;
+import com.exgym.training.exception.ResourceNotFoundException;
 import com.exgym.training.exception.ValidationException;
 
 @ExtendWith(MockitoExtension.class)
@@ -145,6 +146,50 @@ class TrainingServiceTest {
                 () -> trainingService.create(dummyTrainer, dummyTrainee, "Morning Yoga", "YOGA", tomorrow, 60));
 
         verify(trainingDao, never()).save(any(Training.class));
+    }
+
+    @Test
+    void testCreate_ThrowsWhenTraineeHasSameTimeTraining() {
+        Date tomorrow = new Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000);
+        when(traineeDao.existsTrainerAssignment("trainee.one", "trainer.one")).thenReturn(true);
+        when(trainingDao.existsByTrainer_IdAndTrainingDate(anyLong(), any(Date.class))).thenReturn(false);
+        when(trainingDao.existsByTrainee_IdAndTrainingDate(anyLong(), any(Date.class))).thenReturn(true);
+
+        assertThrows(ValidationException.class,
+                () -> trainingService.create(dummyTrainer, dummyTrainee, "Morning Yoga", "YOGA", tomorrow, 60));
+
+        verify(trainingDao, never()).save(any(Training.class));
+    }
+
+    @Test
+    void testCreate_ThrowsWhenTrainingTypeNotFound() {
+        Date tomorrow = new Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000);
+        when(traineeDao.existsTrainerAssignment("trainee.one", "trainer.one")).thenReturn(true);
+        when(trainingDao.existsByTrainer_IdAndTrainingDate(anyLong(), any(Date.class))).thenReturn(false);
+        when(trainingDao.existsByTrainee_IdAndTrainingDate(anyLong(), any(Date.class))).thenReturn(false);
+        when(trainingTypeDao.findByTrainingTypeName("PILATES")).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class,
+                () -> trainingService.create(dummyTrainer, dummyTrainee, "Morning Yoga", "PILATES", tomorrow, 60));
+
+        verify(trainingTypeDao, times(2)).findByTrainingTypeName("PILATES");
+        verify(trainingDao, never()).save(any(Training.class));
+    }
+
+    @Test
+    void testCreate_ThrowsWhenTrainerIsNull() {
+        Date tomorrow = new Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000);
+
+        assertThrows(ValidationException.class,
+                () -> trainingService.create(null, dummyTrainee, "Morning Yoga", "YOGA", tomorrow, 60));
+    }
+
+    @Test
+    void testCreate_ThrowsWhenTraineeIsNull() {
+        Date tomorrow = new Date(System.currentTimeMillis() + 24 * 60 * 60 * 1000);
+
+        assertThrows(ValidationException.class,
+                () -> trainingService.create(dummyTrainer, null, "Morning Yoga", "YOGA", tomorrow, 60));
     }
 
     @Test

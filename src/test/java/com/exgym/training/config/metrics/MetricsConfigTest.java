@@ -1,9 +1,11 @@
 package com.exgym.training.config.metrics;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.when;
 
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
@@ -16,7 +18,6 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 
 public class MetricsConfigTest {
 
-    private MetricsConfig metricsConfig;
     private MeterRegistry meterRegistry;
 
     @Mock
@@ -36,91 +37,79 @@ public class MetricsConfigTest {
 
     @Test
     void testMetricsConfigInitialization() {
-        // Setup
+
         when(traineeDao.count()).thenReturn(5L);
         when(trainerDao.count()).thenReturn(3L);
         when(trainingDao.count()).thenReturn(10L);
 
-        // Execute
-        metricsConfig = new MetricsConfig(meterRegistry, traineeDao, trainerDao, trainingDao);
+        new MetricsConfig(meterRegistry, traineeDao, trainerDao, trainingDao);
 
-        // Verify gauges are registered
-        assert(meterRegistry.find("exgym.active.trainees").gauge() != null);
-        assert(meterRegistry.find("exgym.active.trainers").gauge() != null);
-        assert(meterRegistry.find("exgym.total.trainings").gauge() != null);
+        assertNotNull(meterRegistry.find("exgym.active.trainees").gauge());
+        assertNotNull(meterRegistry.find("exgym.active.trainers").gauge());
+        assertNotNull(meterRegistry.find("exgym.total.trainings").gauge());
     }
 
     @Test
     void testTraineeGaugeReturnsCorrectValue() {
-        // Setup
+
         when(traineeDao.count()).thenReturn(5L);
         when(trainerDao.count()).thenReturn(0L);
         when(trainingDao.count()).thenReturn(0L);
 
-        // Execute
-        metricsConfig = new MetricsConfig(meterRegistry, traineeDao, trainerDao, trainingDao);
+        new MetricsConfig(meterRegistry, traineeDao, trainerDao, trainingDao);
 
-        // Verify gauge value
-        assert(meterRegistry.find("exgym.active.trainees").gauge().value() == 5.0);
+        assertEquals(5.0, meterRegistry.find("exgym.active.trainees").gauge().value());
     }
 
     @Test
     void testTrainerGaugeReturnsCorrectValue() {
-        // Setup
+
         when(traineeDao.count()).thenReturn(0L);
         when(trainerDao.count()).thenReturn(3L);
         when(trainingDao.count()).thenReturn(0L);
 
-        // Execute
-        metricsConfig = new MetricsConfig(meterRegistry, traineeDao, trainerDao, trainingDao);
+        new MetricsConfig(meterRegistry, traineeDao, trainerDao, trainingDao);
 
-        // Verify gauge value
-        assert(meterRegistry.find("exgym.active.trainers").gauge().value() == 3.0);
+        assertEquals(3.0, meterRegistry.find("exgym.active.trainers").gauge().value());
     }
 
     @Test
     void testTrainingGaugeReturnsCorrectValue() {
-        // Setup
+
         when(traineeDao.count()).thenReturn(0L);
         when(trainerDao.count()).thenReturn(0L);
         when(trainingDao.count()).thenReturn(10L);
 
-        // Execute
-        metricsConfig = new MetricsConfig(meterRegistry, traineeDao, trainerDao, trainingDao);
+        new MetricsConfig(meterRegistry, traineeDao, trainerDao, trainingDao);
 
-        // Verify gauge value
-        assert(meterRegistry.find("exgym.total.trainings").gauge().value() == 10.0);
+        assertEquals(10.0, meterRegistry.find("exgym.total.trainings").gauge().value());
     }
 
     @Test
     void testGaugeHandlesExceptionAndReturnsZero() {
-        // Setup - throw exception from DAO
+
         when(traineeDao.count()).thenThrow(new RuntimeException("Database error"));
         when(trainerDao.count()).thenThrow(new RuntimeException("Database error"));
         when(trainingDao.count()).thenThrow(new RuntimeException("Database error"));
 
-        // Execute
-        metricsConfig = new MetricsConfig(meterRegistry, traineeDao, trainerDao, trainingDao);
+        new MetricsConfig(meterRegistry, traineeDao, trainerDao, trainingDao);
 
-        // Verify all gauges return 0 on exception
-        assert(meterRegistry.find("exgym.active.trainees").gauge().value() == 0.0);
-        assert(meterRegistry.find("exgym.active.trainers").gauge().value() == 0.0);
-        assert(meterRegistry.find("exgym.total.trainings").gauge().value() == 0.0);
+        assertEquals(0.0, meterRegistry.find("exgym.active.trainees").gauge().value());
+        assertEquals(0.0, meterRegistry.find("exgym.active.trainers").gauge().value());
+        assertEquals(0.0, meterRegistry.find("exgym.total.trainings").gauge().value());
     }
 
     @Test
     void testGaugeTagsAreCorrect() {
-        // Setup
+
         when(traineeDao.count()).thenReturn(0L);
         when(trainerDao.count()).thenReturn(0L);
         when(trainingDao.count()).thenReturn(0L);
 
-        // Execute
-        metricsConfig = new MetricsConfig(meterRegistry, traineeDao, trainerDao, trainingDao);
+        new MetricsConfig(meterRegistry, traineeDao, trainerDao, trainingDao);
 
-        // Verify tags
-        assert(meterRegistry.find("exgym.active.trainees").tag("entity", "trainee").gauge() != null);
-        assert(meterRegistry.find("exgym.active.trainers").tag("entity", "trainer").gauge() != null);
-        assert(meterRegistry.find("exgym.total.trainings").tag("entity", "training").gauge() != null);
+        assertNotNull(meterRegistry.find("exgym.active.trainees").tag("entity", "trainee").gauge());
+        assertNotNull(meterRegistry.find("exgym.active.trainers").tag("entity", "trainer").gauge());
+        assertNotNull(meterRegistry.find("exgym.total.trainings").tag("entity", "training").gauge());
     }
 }

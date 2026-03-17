@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
+import com.exgym.training.config.metrics.TrainingMetrics;
 import com.exgym.training.dao.TrainingTypeDao;
 import com.exgym.training.dto.training.request.AddTrainingRequest;
 import com.exgym.training.dto.training.response.TrainingTypeResponse;
@@ -28,15 +29,18 @@ public class TrainingFacade {
     private final TrainerService trainerService;
     private final TrainingService trainingService;
     private final TrainingTypeDao trainingTypeDao;
+    private final TrainingMetrics trainingMetrics;
 
     public TrainingFacade(TraineeService traineeService,
         TrainerService trainerService,
         TrainingService trainingService,
-        TrainingTypeDao trainingTypeDao) {
+        TrainingTypeDao trainingTypeDao,
+        TrainingMetrics trainingMetrics) {
     this.traineeService = traineeService;
     this.trainerService = trainerService;
     this.trainingService = trainingService;
     this.trainingTypeDao = trainingTypeDao;
+    this.trainingMetrics = trainingMetrics;
     log.info("TrainingFacade initialized with all services");
     }
 

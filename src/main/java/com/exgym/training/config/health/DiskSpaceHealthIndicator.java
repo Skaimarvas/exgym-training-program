@@ -1,6 +1,8 @@
 package com.exgym.training.config.health;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.health.contributor.Health;
+import org.springframework.boot.health.contributor.HealthIndicator;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
@@ -8,8 +10,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Slf4j
-@Component
-public class DiskSpaceHealthIndicator {
+@Component("customDiskSpaceHealthIndicator")
+public class DiskSpaceHealthIndicator implements HealthIndicator {
 
     private static final long DISK_SPACE_THRESHOLD_WARNING = 5L * 1024 * 1024 * 1024; // 5 GB
     private static final long DISK_SPACE_THRESHOLD_CRITICAL = 1L * 1024 * 1024 * 1024; // 1 GB
@@ -39,6 +41,19 @@ public class DiskSpaceHealthIndicator {
         
         log.debug("Disk space health: {}", details);
         return details;
+    }
+
+    @Override
+    public Health health() {
+        Map<String, Object> details = getDiskSpaceStatus();
+        Object status = details.get("status");
+        if ("DOWN".equals(status)) {
+            return Health.down().withDetails(details).build();
+        }
+        if ("WARNING".equals(status)) {
+            return Health.status("WARNING").withDetails(details).build();
+        }
+        return Health.up().withDetails(details).build();
     }
     
     private String formatBytes(long bytes) {

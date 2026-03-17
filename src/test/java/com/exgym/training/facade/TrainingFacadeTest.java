@@ -1,32 +1,40 @@
 package com.exgym.training.facade;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.util.Date;
+import java.util.List;
+import java.util.Optional;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
 import com.exgym.training.config.metrics.TrainingMetrics;
+import com.exgym.training.dao.TrainingTypeDao;
+import com.exgym.training.dto.training.request.AddTrainingRequest;
+import com.exgym.training.dto.training.response.TrainingTypeResponse;
 import com.exgym.training.entity.Trainee;
 import com.exgym.training.entity.Trainer;
 import com.exgym.training.entity.Training;
 import com.exgym.training.entity.TrainingTypeEntity;
 import com.exgym.training.entity.User;
-import com.exgym.training.dao.TrainingTypeDao;
-import com.exgym.training.dto.training.request.AddTrainingRequest;
-import com.exgym.training.dto.training.response.TrainingTypeResponse;
 import com.exgym.training.service.TraineeService;
 import com.exgym.training.service.TrainerService;
 import com.exgym.training.service.TrainingService;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.util.Date;
-import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Mockito.*;
-import org.junit.jupiter.api.extension.ExtendWith;
-import java.util.List;
 
 @ExtendWith(MockitoExtension.class)
 class TrainingFacadeTest {
@@ -38,6 +46,8 @@ class TrainingFacadeTest {
     private TrainingService trainingService;
     @Mock
     private TrainingTypeDao trainingTypeDao;
+    @Mock
+    private TrainingMetrics trainingMetrics;
 
     @InjectMocks
     private TrainingFacade trainingFacade;
@@ -134,14 +144,16 @@ class TrainingFacadeTest {
 
     @Test
     void testCreateTraining() {
-        when(trainingService.create(any(Trainer.class), any(Trainee.class), anyString(), anyString(), any(Date.class), anyInt()))
-            .thenReturn(training);
+        when(trainingService.create(any(Trainer.class), any(Trainee.class), anyString(), anyString(), any(Date.class),
+                anyInt()))
+                .thenReturn(training);
         Training result = trainingFacade.createTraining(trainer, trainee, "Morning Yoga", "YOGA",
                 new Date(), 60);
         assertNotNull(result);
         assertEquals("Morning Yoga", result.getTrainingName());
         verify(trainingService).create(eq(trainer), eq(trainee), eq("Morning Yoga"), eq("YOGA"),
-            any(Date.class), eq(60));
+                any(Date.class), eq(60));
+        verify(trainingMetrics).incrementTrainingCreation();
     }
 
     @Test

@@ -5,15 +5,17 @@ import com.exgym.training.dao.TrainerDao;
 import com.exgym.training.dao.TrainingDao;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.health.contributor.Health;
+import org.springframework.boot.health.contributor.HealthIndicator;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
 import java.util.Map;
 
 @Slf4j
-@Component
+@Component("customDatabaseHealthIndicator")
 @RequiredArgsConstructor
-public class DatabaseHealthIndicator {
+public class DatabaseHealthIndicator implements HealthIndicator {
 
     private final TraineeDao traineeDao;
     private final TrainerDao trainerDao;
@@ -45,5 +47,14 @@ public class DatabaseHealthIndicator {
         }
         
         return details;
+    }
+
+    @Override
+    public Health health() {
+        Map<String, Object> details = getDatabaseStatus();
+        if ("UP".equals(details.get("status"))) {
+            return Health.up().withDetails(details).build();
+        }
+        return Health.down().withDetails(details).build();
     }
 }

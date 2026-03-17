@@ -23,7 +23,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
+import com.exgym.training.config.metrics.TrainingMetrics;
 import com.exgym.training.dao.TraineeDao;
 import com.exgym.training.dao.TrainerDao;
 import com.exgym.training.dao.UserDao;
@@ -33,7 +35,6 @@ import com.exgym.training.entity.User;
 import com.exgym.training.exception.ResourceNotFoundException;
 import com.exgym.training.util.CredentialsGenerator;
 import com.exgym.training.util.TestDataLoader;
-import com.exgym.training.config.metrics.TrainingMetrics;
 
 @ExtendWith(MockitoExtension.class)
 class TraineeServiceTest {
@@ -50,19 +51,27 @@ class TraineeServiceTest {
     @Mock
     private CredentialsGenerator credentialsGenerator;
 
+    @Mock
+    private PasswordEncoder passwordEncoder;
+
+    @Mock
+    private TrainingMetrics trainingMetrics;
+
     private TraineeService traineeService;
 
     private Trainee testTrainee;
 
     @BeforeEach
     void setUp() {
-        traineeService = new TraineeService(traineeDao, trainerDao, userDao, credentialsGenerator);
+        traineeService = new TraineeService(traineeDao, trainerDao, userDao, credentialsGenerator, passwordEncoder, trainingMetrics);
         testTrainee = TestDataLoader.loadTrainees().get(0);
         lenient().when(userDao.findAll()).thenReturn(new ArrayList<>());
         lenient().when(credentialsGenerator.generateUsername(any(), any(), any()))
                 .thenReturn(testTrainee.getUser().getUserName());
         lenient().when(credentialsGenerator.generatePassword())
                 .thenReturn(testTrainee.getUser().getPassword());
+        lenient().when(passwordEncoder.encode(any())).thenReturn("encoded-password");
+        lenient().when(traineeDao.save(any(Trainee.class))).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     @Test
@@ -73,8 +82,7 @@ class TraineeServiceTest {
         assertEquals("John", created.getUser().getFirstName());
         assertEquals("Doe", created.getUser().getLastName());
         assertEquals("John.Doe", created.getUser().getUserName());
-        assertNotNull(created.getUser().getPassword());
-        assertEquals(10, created.getUser().getPassword().length());
+        assertEquals("encoded-password", created.getUser().getPassword());
         assertTrue(created.getUser().getIsActive());
         verify(traineeDao, times(1)).save(any(Trainee.class));
     }

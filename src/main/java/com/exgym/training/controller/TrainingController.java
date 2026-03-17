@@ -1,7 +1,10 @@
 package com.exgym.training.controller;
 
+import java.security.Principal;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -39,7 +42,8 @@ public class TrainingController {
         @ApiResponse(responseCode = "400", description = "Invalid request data")
     })
     @PostMapping
-    public ResponseEntity<Void> addTraining(@Valid @RequestBody AddTrainingRequest request) {
+    public ResponseEntity<Void> addTraining(@Valid @RequestBody AddTrainingRequest request, Principal principal) {
+        ensureCurrentUserMatchesOneOf(principal, request.getTraineeUsername(), request.getTrainerUsername());
         log.debug("Adding new training: {} for trainee: {} and trainer: {}", 
             request.getTrainingName(), request.getTraineeUsername(), request.getTrainerUsername());
         trainingFacade.addTraining(request);
@@ -57,5 +61,17 @@ public class TrainingController {
         log.debug("Fetching all training types");
         TrainingTypeResponse response = trainingFacade.getTrainingTypes();
         return ResponseEntity.ok(response);
+    }
+
+    private void ensureCurrentUserMatchesOneOf(Principal principal, String... usernames) {
+        if (principal == null) {
+            throw new AccessDeniedException("Authentication is required");
+        }
+        for (String username : usernames) {
+            if (principal.getName().equals(username)) {
+                return;
+            }
+        }
+        throw new AccessDeniedException("Authenticated user cannot create training for unrelated users");
     }
 }
