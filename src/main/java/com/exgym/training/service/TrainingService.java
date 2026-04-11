@@ -44,6 +44,10 @@ public class TrainingService {
         return trainingDao.findTrainerTrainings(request);
     }
 
+    public List<Training> findByTraineeUsername(String username) {
+        return trainingDao.findByTrainee_User_UserName(username);
+    }
+
     public Training create(Trainer trainer, Trainee trainee, String trainingName,
             String trainingTypeName, Date trainingDate, int trainingDuration) {
         log.info("Creating training: {} for trainee {} with trainer {}",

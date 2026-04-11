@@ -1,5 +1,6 @@
 package com.exgym.training.facade;
 
+import java.time.ZoneId;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
@@ -7,10 +8,13 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
+import com.exgym.training.client.WorkloadServiceClient;
 import com.exgym.training.config.metrics.TrainingMetrics;
 import com.exgym.training.dao.TrainingTypeDao;
 import com.exgym.training.dto.training.request.AddTrainingRequest;
 import com.exgym.training.dto.training.response.TrainingTypeResponse;
+import com.exgym.training.dto.workload.TrainerWorkloadRequest;
+import com.exgym.training.dto.workload.WorkloadActionType;
 import com.exgym.training.entity.Trainee;
 import com.exgym.training.entity.Trainer;
 import com.exgym.training.entity.Training;
@@ -30,17 +34,20 @@ public class TrainingFacade {
     private final TrainingService trainingService;
     private final TrainingTypeDao trainingTypeDao;
     private final TrainingMetrics trainingMetrics;
+    private final WorkloadServiceClient workloadServiceClient;
 
     public TrainingFacade(TraineeService traineeService,
         TrainerService trainerService,
         TrainingService trainingService,
         TrainingTypeDao trainingTypeDao,
-        TrainingMetrics trainingMetrics) {
+        TrainingMetrics trainingMetrics,
+        WorkloadServiceClient workloadServiceClient) {
     this.traineeService = traineeService;
     this.trainerService = trainerService;
     this.trainingService = trainingService;
     this.trainingTypeDao = trainingTypeDao;
     this.trainingMetrics = trainingMetrics;
+    this.workloadServiceClient = workloadServiceClient;
     log.info("TrainingFacade initialized with all services");
     }
 
@@ -51,13 +58,38 @@ public class TrainingFacade {
     Trainer trainer = trainerService.selectByUsername(request.getTrainerUsername())
         .orElseThrow(() -> new ResourceNotFoundException("Trainer", "username", request.getTrainerUsername()));
 
-    trainingService.create(
+    Training training = trainingService.create(
         trainer,
         trainee,
         request.getTrainingName(),
         request.getTrainingTypeName(),
         request.getTrainingDate(),
         request.getTrainingDuration());
+
+    workloadServiceClient.sendWorkload(buildWorkloadRequest(training, WorkloadActionType.ADD));
+    }
+
+    public void deleteTraineeByUsername(String username) {
+        log.info("Facade: Deleting trainee {} and notifying workload service", username);
+        List<Training> trainings = trainingService.findByTraineeUsername(username);
+        for (Training training : trainings) {
+            workloadServiceClient.sendWorkload(buildWorkloadRequest(training, WorkloadActionType.DELETE));
+        }
+        traineeService.deleteByUsernameWithBusinessLogic(username);
+    }
+
+    private TrainerWorkloadRequest buildWorkloadRequest(Training training, WorkloadActionType actionType) {
+        Trainer trainer = training.getTrainer();
+        return TrainerWorkloadRequest.builder()
+                .trainerUsername(trainer.getUser().getUserName())
+                .trainerFirstName(trainer.getUser().getFirstName())
+                .trainerLastName(trainer.getUser().getLastName())
+                .isActive(trainer.getUser().getIsActive())
+                .trainingDate(training.getTrainingDate().toInstant()
+                        .atZone(ZoneId.systemDefault()).toLocalDate())
+                .trainingDuration(training.getTrainingDuration())
+                .actionType(actionType)
+                .build();
     }
 
     public TrainingTypeResponse getTrainingTypes() {

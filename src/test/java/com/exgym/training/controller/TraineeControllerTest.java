@@ -10,6 +10,7 @@ import com.exgym.training.entity.Trainer;
 import com.exgym.training.entity.TrainingTypeEntity;
 import com.exgym.training.entity.User;
 import com.exgym.training.exception.ResourceNotFoundException;
+import com.exgym.training.facade.TrainingFacade;
 import com.exgym.training.service.TraineeService;
 import com.exgym.training.service.TrainerService;
 import com.exgym.training.service.TrainingService;
@@ -40,6 +41,9 @@ class TraineeControllerTest {
 
     @Mock
     private TrainingService trainingService;
+
+    @Mock
+    private TrainingFacade trainingFacade;
 
     @Mock
     private Principal principal;
@@ -168,12 +172,12 @@ class TraineeControllerTest {
         request.setUsername("John.Doe");
 
         when(principal.getName()).thenReturn("John.Doe");
-        doNothing().when(traineeService).deleteByUsernameWithBusinessLogic("John.Doe");
+        doNothing().when(trainingFacade).deleteTraineeByUsername("John.Doe");
 
         ResponseEntity<Void> response = traineeController.deleteTraineeProfile(request, principal);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(traineeService, times(1)).deleteByUsernameWithBusinessLogic("John.Doe");
+        verify(trainingFacade, times(1)).deleteTraineeByUsername("John.Doe");
     }
 
     @Test
@@ -187,7 +191,7 @@ class TraineeControllerTest {
             traineeController.deleteTraineeProfile(request, principal);
         });
 
-        verify(traineeService, never()).deleteByUsernameWithBusinessLogic(anyString());
+        verify(trainingFacade, never()).deleteTraineeByUsername(anyString());
     }
 
     @Test

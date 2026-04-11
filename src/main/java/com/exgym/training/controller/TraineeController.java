@@ -37,6 +37,7 @@ import com.exgym.training.entity.Trainer;
 import com.exgym.training.entity.Training;
 import com.exgym.training.exception.ResourceNotFoundException;
 import com.exgym.training.exception.ValidationException;
+import com.exgym.training.facade.TrainingFacade;
 import com.exgym.training.service.TraineeService;
 import com.exgym.training.service.TrainerService;
 import com.exgym.training.service.TrainingService;
@@ -58,13 +59,15 @@ public class TraineeController {
     private final TraineeService traineeService;
     private final TrainerService trainerService;
     private final TrainingService trainingService;
+    private final TrainingFacade trainingFacade;
 
     @Autowired
-    public TraineeController(TraineeService traineeService, TrainerService trainerService, 
-                            TrainingService trainingService) {
+    public TraineeController(TraineeService traineeService, TrainerService trainerService,
+                            TrainingService trainingService, TrainingFacade trainingFacade) {
         this.traineeService = traineeService;
         this.trainerService = trainerService;
         this.trainingService = trainingService;
+        this.trainingFacade = trainingFacade;
     }
 
     @Operation(summary = "Register trainee", description = "Register a new trainee with auto-generated credentials")
@@ -143,7 +146,7 @@ public class TraineeController {
     public ResponseEntity<Void> deleteTraineeProfile(@Valid @RequestBody GetProfileRequest request, Principal principal) {
         ensureCurrentUser(request.getUsername(), principal);
         log.debug("Deleting profile for trainee: {}", request.getUsername());
-        traineeService.deleteByUsernameWithBusinessLogic(request.getUsername());
+        trainingFacade.deleteTraineeByUsername(request.getUsername());
         log.info("Profile deleted successfully for trainee: {}", request.getUsername());
         return ResponseEntity.ok().build();
     }

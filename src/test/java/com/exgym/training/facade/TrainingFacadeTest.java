@@ -23,10 +23,12 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.exgym.training.client.WorkloadServiceClient;
 import com.exgym.training.config.metrics.TrainingMetrics;
 import com.exgym.training.dao.TrainingTypeDao;
 import com.exgym.training.dto.training.request.AddTrainingRequest;
 import com.exgym.training.dto.training.response.TrainingTypeResponse;
+import com.exgym.training.dto.workload.TrainerWorkloadRequest;
 import com.exgym.training.entity.Trainee;
 import com.exgym.training.entity.Trainer;
 import com.exgym.training.entity.Training;
@@ -48,6 +50,8 @@ class TrainingFacadeTest {
     private TrainingTypeDao trainingTypeDao;
     @Mock
     private TrainingMetrics trainingMetrics;
+    @Mock
+    private WorkloadServiceClient workloadServiceClient;
 
     @InjectMocks
     private TrainingFacade trainingFacade;
@@ -176,18 +180,19 @@ class TrainingFacadeTest {
                 60);
         when(traineeService.selectByUsername("John.Doe")).thenReturn(Optional.of(trainee));
         when(trainerService.selectByUsername("Jane.Smith")).thenReturn(Optional.of(trainer));
+        when(trainingService.create(
+                eq(trainer), eq(trainee), eq("Morning Yoga"), eq("YOGA"),
+                any(Date.class), eq(60))).thenReturn(training);
+        doNothing().when(workloadServiceClient).sendWorkload(any(TrainerWorkloadRequest.class));
 
         trainingFacade.addTraining(request);
 
         verify(traineeService).selectByUsername("John.Doe");
         verify(trainerService).selectByUsername("Jane.Smith");
         verify(trainingService).create(
-                eq(trainer),
-                eq(trainee),
-                eq("Morning Yoga"),
-                eq("YOGA"),
-                any(Date.class),
-                eq(60));
+                eq(trainer), eq(trainee), eq("Morning Yoga"), eq("YOGA"),
+                any(Date.class), eq(60));
+        verify(workloadServiceClient).sendWorkload(any(TrainerWorkloadRequest.class));
     }
 
     @Test
