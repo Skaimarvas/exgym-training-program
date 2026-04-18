@@ -70,12 +70,17 @@ public class TrainingFacade {
     }
 
     public void deleteTraineeByUsername(String username) {
-        log.info("Facade: Deleting trainee {} and notifying workload service", username);
+        log.info("Facade: Deleting trainee {} and notifying workload service after local delete", username);
         List<Training> trainings = trainingService.findByTraineeUsername(username);
-        for (Training training : trainings) {
-            workloadServiceClient.sendWorkload(buildWorkloadRequest(training, WorkloadActionType.DELETE));
-        }
+        List<TrainerWorkloadRequest> workloadDeletes = trainings.stream()
+                .map(training -> buildWorkloadRequest(training, WorkloadActionType.DELETE))
+                .toList();
+
         traineeService.deleteByUsernameWithBusinessLogic(username);
+
+        for (TrainerWorkloadRequest workloadDelete : workloadDeletes) {
+            workloadServiceClient.sendWorkload(workloadDelete);
+        }
     }
 
     private TrainerWorkloadRequest buildWorkloadRequest(Training training, WorkloadActionType actionType) {
@@ -140,7 +145,7 @@ public class TrainingFacade {
     public Training createTraining(Trainer trainer, Trainee trainee, String trainingName,
             String trainingTypeName, Date trainingDate, int trainingDuration) {
         log.info("Facade: Creating training {} for trainee {} with trainer {}",
-                trainingName, trainee, trainer);
+            trainingName, trainee.getUser().getUserName(), trainer.getUser().getUserName());
         Training training = trainingService.create(trainer, trainee, trainingName, trainingTypeName, trainingDate, trainingDuration);
         trainingMetrics.incrementTrainingCreation();
         return training;

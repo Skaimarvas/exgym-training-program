@@ -181,9 +181,22 @@ public class TraineeService {
     @Transactional
     public void deleteByUsernameWithBusinessLogic(String userName) {
         log.info("Deleting trainee with username: {}", userName);
-        Trainee trainee = traineeDao.findByUser_UserName(userName)
+        Trainee trainee = traineeDao.findProfileByUser_UserName(userName)
                 .orElseThrow(() -> new ResourceNotFoundException("Trainee", "username", userName));
-        traineeDao.deleteById(trainee.getId());
+
+        Set<Trainer> assignedTrainers = trainee.getTrainers() == null
+                ? Set.of()
+                : new HashSet<>(trainee.getTrainers());
+
+        for (Trainer trainer : assignedTrainers) {
+            if (trainer.getTrainees() != null) {
+                trainer.getTrainees().remove(trainee);
+            }
+            trainerDao.save(trainer);
+        }
+
+        trainee.setTrainers(new HashSet<>());
+        traineeDao.delete(trainee);
         log.info("Trainee deleted successfully: {}", userName);
     }
 

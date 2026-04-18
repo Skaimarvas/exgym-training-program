@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -14,6 +15,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -22,6 +24,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.InOrder;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -235,5 +238,24 @@ class TraineeServiceTest {
         verify(trainerDao, never()).findAllByUser_UserNameIn(any());
         verify(trainerDao, never()).save(any(Trainer.class));
         verify(traineeDao, never()).save(any(Trainee.class));
+    }
+
+    @Test
+    void testDeleteByUsernameWithBusinessLogic_ClearsTrainerAssignmentsBeforeDelete() {
+        Trainer assignedTrainer = TestDataLoader.loadTrainers().get(0);
+        assignedTrainer.setTrainees(new HashSet<>(Set.of(testTrainee)));
+        testTrainee.setTrainers(new HashSet<>(Set.of(assignedTrainer)));
+
+        when(traineeDao.findProfileByUser_UserName("John.Doe")).thenReturn(Optional.of(testTrainee));
+        when(trainerDao.save(assignedTrainer)).thenReturn(assignedTrainer);
+        doNothing().when(traineeDao).delete(testTrainee);
+
+        traineeService.deleteByUsernameWithBusinessLogic("John.Doe");
+
+        InOrder inOrder = inOrder(trainerDao, traineeDao);
+        inOrder.verify(trainerDao).save(assignedTrainer);
+        inOrder.verify(traineeDao).delete(testTrainee);
+        assertTrue(assignedTrainer.getTrainees().isEmpty());
+        assertTrue(testTrainee.getTrainers().isEmpty());
     }
 }

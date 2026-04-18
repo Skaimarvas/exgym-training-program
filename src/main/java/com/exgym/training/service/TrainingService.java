@@ -50,10 +50,9 @@ public class TrainingService {
 
     public Training create(Trainer trainer, Trainee trainee, String trainingName,
             String trainingTypeName, Date trainingDate, int trainingDuration) {
-        log.info("Creating training: {} for trainee {} with trainer {}",
-                trainingName, trainee, trainer);
-        
         validateTrainingInputs(trainer, trainee, trainingName, trainingTypeName, trainingDate, trainingDuration);
+        log.info("Creating training: {} for trainee {} with trainer {}",
+            trainingName, trainee.getUser().getUserName(), trainer.getUser().getUserName());
         
         TrainingTypeEntity trainingType = findTrainingType(trainingTypeName);
         

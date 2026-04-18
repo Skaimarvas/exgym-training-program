@@ -9,6 +9,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -20,6 +21,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -207,5 +209,19 @@ class TrainingFacadeTest {
         assertEquals(2, response.getTrainingTypes().size());
         assertEquals("YOGA", response.getTrainingTypes().get(0).getTrainingType());
         verify(trainingTypeDao).findAll();
+    }
+
+    @Test
+    void testDeleteTraineeByUsername_DeletesLocallyBeforeWorkloadSync() {
+        when(trainingService.findByTraineeUsername("John.Doe")).thenReturn(List.of(training));
+        doNothing().when(traineeService).deleteByUsernameWithBusinessLogic("John.Doe");
+        doNothing().when(workloadServiceClient).sendWorkload(any(TrainerWorkloadRequest.class));
+
+        trainingFacade.deleteTraineeByUsername("John.Doe");
+
+        InOrder inOrder = inOrder(trainingService, traineeService, workloadServiceClient);
+        inOrder.verify(trainingService).findByTraineeUsername("John.Doe");
+        inOrder.verify(traineeService).deleteByUsernameWithBusinessLogic("John.Doe");
+        inOrder.verify(workloadServiceClient).sendWorkload(any(TrainerWorkloadRequest.class));
     }
 }
