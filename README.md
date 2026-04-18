@@ -177,6 +177,42 @@ The application will start on the default port (typically 8080).
 mvn test
 ```
 
+### Run all tests with the Maven wrapper:
+```bash
+./mvnw test
+```
+
+### Run only the Cucumber component suite:
+```bash
+./mvnw -Dtest=TrainingComponentCucumberTest test
+```
+
+This suite covers training-service component behaviour with a real Spring Boot context, including:
+
+- successful trainee registration, login, and profile retrieval
+- forbidden access to another trainee's profile
+- negative validation flow for future birth dates
+
+### Run only the microservice integration suite:
+```bash
+./mvnw -Dtest=MicroservicesIntegrationCucumberTest test
+```
+
+This suite starts the workload service as part of the test flow and verifies:
+
+- successful trainer assignment, training creation, and workload propagation
+- negative authorization flow where forbidden training creation does not produce workload data
+
+### Run both new BDD suites together:
+```bash
+./mvnw -Dtest=TrainingComponentCucumberTest,MicroservicesIntegrationCucumberTest test
+```
+
+### Integration test prerequisites
+
+- Docker must be running because the integration flow starts the workload service against a MongoDB Testcontainers instance.
+- The suite launches the workload service automatically on port `18082` and the training service test context on port `18080`.
+
 ### Run tests with code coverage:
 ```bash
 mvn clean test jacoco:report
@@ -194,6 +230,9 @@ target/site/jacoco/index.html
   - `service/`: Service layer tests (TraineeServiceTest, TrainerServiceTest, TrainingServiceTest)
   - `facade/`: Facade layer tests
   - `util/`: Utility class tests
+- **Cucumber Component Tests**: `src/test/java/com/exgym/training/cucumber/component/`
+- **Cucumber Integration Tests**: `src/test/java/com/exgym/training/cucumber/integration/`
+- **Feature Files**: `src/test/resources/features/`
 
 ## Project Structure
 
