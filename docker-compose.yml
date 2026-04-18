@@ -1,0 +1,47 @@
+services:
+  activemq:
+    image: rmohr/activemq:5.15.9
+    container_name: exgym-activemq
+    ports:
+      - "61616:61616"
+      - "8161:8161"
+
+  discovery-service:
+    build:
+      context: ../exgym-discovery-service
+    container_name: exgym-discovery-service
+    ports:
+      - "8761:8761"
+    depends_on:
+      - activemq
+
+  exgymworkload:
+    build:
+      context: ../exgymworkload
+    container_name: exgymworkload
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_ACTIVEMQ_BROKER_URL: tcp://activemq:61616
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://discovery-service:8761/eureka/
+    depends_on:
+      - activemq
+      - discovery-service
+
+  exgym-training-program:
+    build:
+      context: .
+    container_name: exgym-training-program
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      SPRING_ACTIVEMQ_BROKER_URL: tcp://activemq:61616
+      EUREKA_CLIENT_ENABLED: true
+      EUREKA_CLIENT_REGISTER_WITH_EUREKA: true
+      EUREKA_CLIENT_FETCH_REGISTRY: true
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://discovery-service:8761/eureka/
+    depends_on:
+      - activemq
+      - discovery-service
+      - exgymworkload
