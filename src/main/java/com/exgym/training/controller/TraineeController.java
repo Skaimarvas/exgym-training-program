@@ -46,6 +46,7 @@ import com.exgym.training.service.GeneratedCredentials;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
@@ -75,6 +76,7 @@ public class TraineeController {
         @ApiResponse(responseCode = "200", description = "Trainee registered successfully"),
         @ApiResponse(responseCode = "400", description = "Invalid request data")
     })
+    @SecurityRequirements
     @PostMapping("/register")
     public ResponseEntity<RegistrationResponse> registerTrainee(@Valid @RequestBody TraineeRegistrationRequest request) {
         log.debug("Registering new trainee: {} {}", request.getFirstName(), request.getLastName());

@@ -20,6 +20,7 @@ import com.exgym.training.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
@@ -42,6 +43,7 @@ public class UserController {
         @ApiResponse(responseCode = "200", description = "Login successful"),
         @ApiResponse(responseCode = "401", description = "Invalid credentials")
     })
+    @SecurityRequirements
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         log.debug("Login attempt for username: {}", request.getUsername());
