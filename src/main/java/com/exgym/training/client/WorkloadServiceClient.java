@@ -1,25 +1,15 @@
 package com.exgym.training.client;
 
-import java.nio.charset.StandardCharsets;
-import java.time.Instant;
-import java.util.Date;
-
-import javax.crypto.SecretKey;
-
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
+import org.springframework.jms.core.JmsTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
 import com.exgym.training.dto.workload.TrainerWorkloadRequest;
 import com.exgym.training.util.TransactionContext;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.security.Keys;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -27,60 +17,48 @@ import lombok.extern.slf4j.Slf4j;
 public class WorkloadServiceClient {
 
     private static final String CB_NAME = "workload-service";
+    private static final String TRANSACTION_ID_PROPERTY = "transactionId";
 
-    private final RestTemplate restTemplate;
+    private final JmsTemplate jmsTemplate;
+    private final ObjectMapper objectMapper;
 
-    @Value("${workload.service.url:http://exgymworkload}")
-    private String workloadServiceUrl;
+    @Value("${messaging.workload.queue:trainer.workload.queue}")
+    private String workloadQueue;
 
-    @Value("${workload.service.api.path:/api/v1/trainers/workload}")
-    private String workloadApiPath;
-
-    @Value("${app.security.interservice.jwt.secret}")
-    private String interserviceSecret;
-
-    @Value("${app.security.jwt.expiration:3600000}")
-    private long expirationMillis;
-
-    public WorkloadServiceClient(@Qualifier("loadBalancedRestTemplate") RestTemplate restTemplate) {
-        this.restTemplate = restTemplate;
+    public WorkloadServiceClient(JmsTemplate jmsTemplate, ObjectMapper objectMapper) {
+        this.jmsTemplate = jmsTemplate;
+        this.objectMapper = objectMapper;
     }
 
     @CircuitBreaker(name = CB_NAME, fallbackMethod = "sendWorkloadFallback")
     public void sendWorkload(TrainerWorkloadRequest request) {
-        log.debug("Sending workload update to workload service: action={}, trainer={}",
-                request.getActionType(), request.getTrainerUsername());
+        log.debug("Publishing workload update message: action={}, trainer={}, queue={}",
+                request.getActionType(), request.getTrainerUsername(), workloadQueue);
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set(HttpHeaders.AUTHORIZATION, generateServiceToken());
+        String payload = serialize(request);
 
         String transactionId = TransactionContext.getTransactionId();
-        if (transactionId != null) {
-            headers.set("X-Transaction-Id", transactionId);
-        }
+        jmsTemplate.convertAndSend(workloadQueue, payload, message -> {
+            if (transactionId != null && !transactionId.isBlank()) {
+                message.setStringProperty(TRANSACTION_ID_PROPERTY, transactionId);
+            }
+            return message;
+        });
 
-        HttpEntity<TrainerWorkloadRequest> entity = new HttpEntity<>(request, headers);
-        restTemplate.put(workloadServiceUrl + workloadApiPath, entity);
-
-        log.info("Workload update sent: action={}, trainer={}",
-                request.getActionType(), request.getTrainerUsername());
+        log.info("Workload update message published: action={}, trainer={}, queue={}",
+                request.getActionType(), request.getTrainerUsername(), workloadQueue);
     }
 
     private void sendWorkloadFallback(TrainerWorkloadRequest request, Throwable t) {
-        log.warn("Workload service unavailable (circuit open) for trainer={}, action={}. Cause: {}",
-                request.getTrainerUsername(), request.getActionType(), t.getMessage());
+        log.warn("Workload message publish failed for trainer={}, action={}, queue={}. Cause: {}",
+                request.getTrainerUsername(), request.getActionType(), workloadQueue, t.getMessage());
     }
 
-    private String generateServiceToken() {
-        SecretKey key = Keys.hmacShaKeyFor(interserviceSecret.getBytes(StandardCharsets.UTF_8));
-        Instant now = Instant.now();
-        String token = Jwts.builder()
-                .subject("training-service")
-                .issuedAt(Date.from(now))
-                .expiration(Date.from(now.plusMillis(expirationMillis)))
-                .signWith(key)
-                .compact();
-        return "Bearer " + token;
+    private String serialize(TrainerWorkloadRequest request) {
+        try {
+            return objectMapper.writeValueAsString(request);
+        } catch (JsonProcessingException exception) {
+            throw new IllegalStateException("Failed to serialize workload message", exception);
+        }
     }
 }
