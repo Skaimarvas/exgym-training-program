@@ -137,6 +137,29 @@ For quick testing without PostgreSQL, use the default `local` profile. It alread
 
 ## Running the Application
 
+### Launch ActiveMQ
+
+The training service now publishes trainer workload updates asynchronously to ActiveMQ instead of calling the workload service over REST.
+
+The broker was launched with Docker Compose from the training-program repository root:
+
+```bash
+docker compose up -d activemq
+```
+
+This starts:
+
+- JMS broker on `tcp://localhost:61616`
+- ActiveMQ web console on `http://localhost:8161`
+
+If you want the whole local stack instead of just the broker, use:
+
+```bash
+docker compose up -d activemq discovery-service exgymworkload exgym-training-program
+```
+
+The training service publishes to queue `trainer.workload.queue` using `spring-boot-starter-activemq` and the broker URL from `SPRING_ACTIVEMQ_BROKER_URL`.
+
 ### Using Maven
 
 1. **Build the project**:
@@ -182,6 +205,12 @@ mvn test
 mvn clean test jacoco:report
 ```
 
+### Focused messaging tests
+
+```bash
+./mvnw test -Dtest=WorkloadServiceClientTest,TrainingFacadeTest,TrainerControllerTest
+```
+
 After running tests with coverage, open the report:
 ```
 target/site/jacoco/index.html
@@ -224,6 +253,36 @@ exgym-training-program/
 ```
 
 ## API Overview
+
+### Messaging Flow
+
+The CRM service publishes workload updates to ActiveMQ in these flows:
+
+- `POST /api/v1/training` publishes an `ADD` workload event after the training is created locally.
+- `DELETE /api/v1/trainee/profile` publishes `DELETE` workload events for the trainee's existing trainings after the local delete succeeds.
+- `PUT /api/v1/trainer/profile` replays the trainer's existing trainings as `DELETE` then `ADD` so the workload projection picks up updated trainer name and active status without changing workload totals.
+- `PATCH /api/v1/trainer/{username}/status` uses the same replay strategy so the workload projection stays aligned with trainer activation changes.
+
+All workload messages are sent to queue `trainer.workload.queue` and include the current transaction id as a JMS property when available.
+
+### Manual Verification Flow
+
+These are the manual flows used to verify the CRM-side messaging behavior before submission:
+
+1. Start infrastructure:
+   ```bash
+   docker compose up -d activemq discovery-service exgymworkload
+   ```
+2. Start the CRM service:
+   ```bash
+   ./mvnw spring-boot:run
+   ```
+3. Register a trainer and trainee, assign the trainer to the trainee, then create a training through the CRM API.
+4. Query the workload service and verify the trainer's monthly summary increased.
+5. Update the trainer profile or trainer active status in the CRM API.
+6. Query the workload service again and verify the trainer name/status changed while the monthly duration stayed the same.
+7. Delete the trainee profile in the CRM API.
+8. Query the workload service again and verify the trainer's monthly summary decreased accordingly.
 
 ### Authentication Model
 

@@ -83,6 +83,26 @@ public class TrainingFacade {
         }
     }
 
+    public Trainer updateTrainerProfile(String userName, String firstName, String lastName, Boolean isActive) {
+        Trainer updatedTrainer = trainerService.updateProfile(userName, firstName, lastName, isActive);
+        syncTrainerWorkload(userName);
+        return updatedTrainer;
+    }
+
+    public void updateTrainerStatus(String userName, Boolean isActive) {
+        trainerService.updateStatus(userName, isActive);
+        syncTrainerWorkload(userName);
+    }
+
+    private void syncTrainerWorkload(String trainerUsername) {
+        List<Training> trainings = trainingService.findByTrainerUsername(trainerUsername);
+
+        for (Training training : trainings) {
+            workloadServiceClient.sendWorkload(buildWorkloadRequest(training, WorkloadActionType.DELETE));
+            workloadServiceClient.sendWorkload(buildWorkloadRequest(training, WorkloadActionType.ADD));
+        }
+    }
+
     private TrainerWorkloadRequest buildWorkloadRequest(Training training, WorkloadActionType actionType) {
         Trainer trainer = training.getTrainer();
         return TrainerWorkloadRequest.builder()

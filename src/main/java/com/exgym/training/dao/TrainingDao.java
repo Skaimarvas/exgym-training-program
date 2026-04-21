@@ -33,4 +33,6 @@ public interface TrainingDao extends JpaRepository<Training, Long> {
 	boolean existsByTrainee_IdAndTrainingDate(Long traineeId, Date trainingDate);
 
 	List<Training> findByTrainee_User_UserName(String username);
+
+	List<Training> findByTrainer_User_UserName(String username);
 }

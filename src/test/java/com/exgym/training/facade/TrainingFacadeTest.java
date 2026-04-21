@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.inOrder;
@@ -31,6 +32,7 @@ import com.exgym.training.dao.TrainingTypeDao;
 import com.exgym.training.dto.training.request.AddTrainingRequest;
 import com.exgym.training.dto.training.response.TrainingTypeResponse;
 import com.exgym.training.dto.workload.TrainerWorkloadRequest;
+import com.exgym.training.dto.workload.WorkloadActionType;
 import com.exgym.training.entity.Trainee;
 import com.exgym.training.entity.Trainer;
 import com.exgym.training.entity.Training;
@@ -223,5 +225,36 @@ class TrainingFacadeTest {
         inOrder.verify(trainingService).findByTraineeUsername("John.Doe");
         inOrder.verify(traineeService).deleteByUsernameWithBusinessLogic("John.Doe");
         inOrder.verify(workloadServiceClient).sendWorkload(any(TrainerWorkloadRequest.class));
+    }
+
+    @Test
+    void testUpdateTrainerProfile_ReplaysExistingTrainingsToRefreshWorkloadProjection() {
+        when(trainerService.updateProfile("Jane.Smith", "Janet", "Smith", false)).thenReturn(trainer);
+        when(trainingService.findByTrainerUsername("Jane.Smith")).thenReturn(List.of(training));
+        doNothing().when(workloadServiceClient).sendWorkload(any(TrainerWorkloadRequest.class));
+
+        Trainer result = trainingFacade.updateTrainerProfile("Jane.Smith", "Janet", "Smith", false);
+
+        assertEquals(trainer, result);
+        InOrder inOrder = inOrder(trainerService, trainingService, workloadServiceClient);
+        inOrder.verify(trainerService).updateProfile("Jane.Smith", "Janet", "Smith", false);
+        inOrder.verify(trainingService).findByTrainerUsername("Jane.Smith");
+        inOrder.verify(workloadServiceClient).sendWorkload(argThat(request -> request.getActionType() == WorkloadActionType.DELETE));
+        inOrder.verify(workloadServiceClient).sendWorkload(argThat(request -> request.getActionType() == WorkloadActionType.ADD));
+    }
+
+    @Test
+    void testUpdateTrainerStatus_ReplaysExistingTrainingsToRefreshWorkloadProjection() {
+        doNothing().when(trainerService).updateStatus("Jane.Smith", false);
+        when(trainingService.findByTrainerUsername("Jane.Smith")).thenReturn(List.of(training));
+        doNothing().when(workloadServiceClient).sendWorkload(any(TrainerWorkloadRequest.class));
+
+        trainingFacade.updateTrainerStatus("Jane.Smith", false);
+
+        InOrder inOrder = inOrder(trainerService, trainingService, workloadServiceClient);
+        inOrder.verify(trainerService).updateStatus("Jane.Smith", false);
+        inOrder.verify(trainingService).findByTrainerUsername("Jane.Smith");
+        inOrder.verify(workloadServiceClient).sendWorkload(argThat(request -> request.getActionType() == WorkloadActionType.DELETE));
+        inOrder.verify(workloadServiceClient).sendWorkload(argThat(request -> request.getActionType() == WorkloadActionType.ADD));
     }
 }

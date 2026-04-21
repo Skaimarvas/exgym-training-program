@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -29,6 +28,7 @@ import com.exgym.training.dto.trainer.response.UpdateTrainerProfileResponse;
 import com.exgym.training.entity.Trainee;
 import com.exgym.training.entity.Trainer;
 import com.exgym.training.exception.ResourceNotFoundException;
+import com.exgym.training.facade.TrainingFacade;
 import com.exgym.training.service.TrainerService;
 import com.exgym.training.service.TrainingService;
 import com.exgym.training.service.GeneratedCredentials;
@@ -49,11 +49,13 @@ public class TrainerController {
 
     private final TrainerService trainerService;
     private final TrainingService trainingService;
+        private final TrainingFacade trainingFacade;
 
-    @Autowired
-    public TrainerController(TrainerService trainerService, TrainingService trainingService) {
+        public TrainerController(TrainerService trainerService, TrainingService trainingService,
+                        TrainingFacade trainingFacade) {
         this.trainerService = trainerService;
         this.trainingService = trainingService;
+                this.trainingFacade = trainingFacade;
     }
 
     @Operation(summary = "Register trainer", description = "Register a new trainer with auto-generated credentials")
@@ -108,7 +110,7 @@ public class TrainerController {
                 ensureCurrentUser(request.getUsername(), principal);
         log.debug("Updating profile for trainer: {}", request.getUsername());
 
-        Trainer updatedTrainer = trainerService.updateProfile(
+                Trainer updatedTrainer = trainingFacade.updateTrainerProfile(
             request.getUsername(),
             request.getFirstName(),
             request.getLastName(),
@@ -171,7 +173,7 @@ public class TrainerController {
                         Principal principal) {
                 ensureCurrentUser(username, principal);
         log.debug("Updating status for trainer: {} to {}", username, isActive);
-        trainerService.updateStatus(username, isActive);
+        trainingFacade.updateTrainerStatus(username, isActive);
         return ResponseEntity.ok().build();
     }
 
