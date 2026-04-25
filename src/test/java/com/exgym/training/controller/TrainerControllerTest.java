@@ -34,6 +34,7 @@ import com.exgym.training.entity.Trainer;
 import com.exgym.training.entity.TrainingTypeEntity;
 import com.exgym.training.entity.User;
 import com.exgym.training.exception.ResourceNotFoundException;
+import com.exgym.training.facade.TrainingFacade;
 import com.exgym.training.service.TrainerService;
 import com.exgym.training.service.TrainingService;
 
@@ -44,6 +45,9 @@ class TrainerControllerTest {
 
     @Mock
     private TrainingService trainingService;
+
+    @Mock
+    private TrainingFacade trainingFacade;
 
     @Mock
     private Principal principal;
@@ -132,14 +136,14 @@ class TrainerControllerTest {
         request.setIsActive(true);
 
         when(principal.getName()).thenReturn("Jane.Smith");
-        when(trainerService.updateProfile("Jane.Smith", "Jane", "Smith", true)).thenReturn(trainer);
+        when(trainingFacade.updateTrainerProfile("Jane.Smith", "Jane", "Smith", true)).thenReturn(trainer);
 
         ResponseEntity<UpdateTrainerProfileResponse> response = trainerController.updateTrainerProfile(request,
                 principal);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
-        verify(trainerService, times(1)).updateProfile("Jane.Smith", "Jane", "Smith", true);
+        verify(trainingFacade, times(1)).updateTrainerProfile("Jane.Smith", "Jane", "Smith", true);
     }
 
     @Test
@@ -153,7 +157,7 @@ class TrainerControllerTest {
             trainerController.updateTrainerProfile(request, principal);
         });
 
-        verify(trainerService, never()).updateProfile(anyString(), anyString(), anyString(), any());
+        verify(trainingFacade, never()).updateTrainerProfile(anyString(), anyString(), anyString(), any());
     }
 
     @Test
@@ -165,14 +169,14 @@ class TrainerControllerTest {
         request.setIsActive(true);
 
         when(principal.getName()).thenReturn("Jane.Smith");
-        when(trainerService.updateProfile("Jane.Smith", "Jane", "Smith", true))
+        when(trainingFacade.updateTrainerProfile("Jane.Smith", "Jane", "Smith", true))
             .thenThrow(new ResourceNotFoundException("Trainer", "username", "Jane.Smith"));
 
         assertThrows(ResourceNotFoundException.class, () -> {
             trainerController.updateTrainerProfile(request, principal);
         });
 
-        verify(trainerService, times(1)).updateProfile("Jane.Smith", "Jane", "Smith", true);
+        verify(trainingFacade, times(1)).updateTrainerProfile("Jane.Smith", "Jane", "Smith", true);
     }
 
     @Test
@@ -182,13 +186,13 @@ class TrainerControllerTest {
         request.setIsActive(false);
 
         when(principal.getName()).thenReturn("Jane.Smith");
-        doNothing().when(trainerService).updateStatus("Jane.Smith", false);
+        doNothing().when(trainingFacade).updateTrainerStatus("Jane.Smith", false);
 
         ResponseEntity<Void> response = trainerController.updateTrainerStatus(request.getUsername(),
                 request.getIsActive(), principal);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
-        verify(trainerService, times(1)).updateStatus("Jane.Smith", false);
+        verify(trainingFacade, times(1)).updateTrainerStatus("Jane.Smith", false);
     }
 
     @Test
@@ -202,7 +206,7 @@ class TrainerControllerTest {
             trainerController.updateTrainerStatus(request.getUsername(), request.getIsActive(), principal);
         });
 
-        verify(trainerService, never()).updateStatus(anyString(), any());
+        verify(trainingFacade, never()).updateTrainerStatus(anyString(), any());
     }
 
     @Test
@@ -213,12 +217,12 @@ class TrainerControllerTest {
 
         when(principal.getName()).thenReturn("Jane.Smith");
         doThrow(new ResourceNotFoundException("Trainer", "username", "Jane.Smith"))
-            .when(trainerService).updateStatus("Jane.Smith", false);
+            .when(trainingFacade).updateTrainerStatus("Jane.Smith", false);
 
         assertThrows(ResourceNotFoundException.class, () -> {
             trainerController.updateTrainerStatus(request.getUsername(), request.getIsActive(), principal);
         });
 
-        verify(trainerService, times(1)).updateStatus("Jane.Smith", false);
+        verify(trainingFacade, times(1)).updateTrainerStatus("Jane.Smith", false);
     }
 }

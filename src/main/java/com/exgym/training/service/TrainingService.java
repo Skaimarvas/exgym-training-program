@@ -48,6 +48,10 @@ public class TrainingService {
         return trainingDao.findByTrainee_User_UserName(username);
     }
 
+    public List<Training> findByTrainerUsername(String username) {
+        return trainingDao.findByTrainer_User_UserName(username);
+    }
+
     public Training create(Trainer trainer, Trainee trainee, String trainingName,
             String trainingTypeName, Date trainingDate, int trainingDuration) {
         validateTrainingInputs(trainer, trainee, trainingName, trainingTypeName, trainingDate, trainingDuration);
